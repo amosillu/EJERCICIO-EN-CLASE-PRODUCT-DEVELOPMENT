@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -20,6 +21,17 @@ MODELS_DIR = PROJ_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+
+# MLflow: tracking y registro de modelos en SQLite local.
+# Los artefactos van a una ruta corta fuera del proyecto porque la ruta del proyecto
+# más las carpetas internas de MLflow supera el límite de 260 caracteres de Windows.
+MLFLOW_TRACKING_URI = f"sqlite:///{(PROJ_ROOT / 'mlflow.db').as_posix()}"
+MLFLOW_ARTIFACTS_DIR = Path.home() / "mlflow" / "house_pricing"
+MLFLOW_REGISTERED_MODEL = "house_pricing"
+
+# Silencia el aviso informativo que MLflow imprime al importarse y sus barras de progreso
+os.environ.setdefault("MLFLOW_DISABLE_AGENT_HINT", "1")
+os.environ.setdefault("MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR", "false")
 
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135

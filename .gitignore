@@ -2,6 +2,10 @@
 /data/*/*
 !/data/*/.gitkeep
 
+# MLflow: base de tracking y registro local (los artefactos se guardan fuera del proyecto)
+/mlflow.db
+/mlruns/
+
 # Mac OS-specific storage files
 .DS_Store
 
