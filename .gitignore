@@ -1,5 +1,6 @@
-# Data
-/data/
+# Data: se versiona solo la estructura de carpetas, no los archivos de datos
+/data/*/*
+!/data/*/.gitkeep
 
 # Mac OS-specific storage files
 .DS_Store
