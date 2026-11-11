@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torneo de modelos</title>
+<style>
+/* Tablero de revisión: resumen arriba, detalle por modelo debajo. Tipografía del sistema, color solo para datos y estado. */
+:root {
+  color-scheme: light;
+  --plano: #f9f9f7;
+  --superficie: #fcfcfb;
+  --tinta: #0b0b0b;
+  --tinta-2: #52514e;
+  --tinta-3: #6f6e69;
+  --reticula: #e1e0d9;
+  --eje: #c3c2b7;
+  --borde: rgba(11, 11, 11, 0.10);
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-gris: #898781;
+  --lavado: rgba(42, 120, 214, 0.10);
+  --bueno: #006300;
+  --critico: #d03b3b;
+  --aviso-texto: #8a5a00;
+  --fuente: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plano: #0d0d0d;
+    --superficie: #1a1a19;
+    --tinta: #f0efec;
+    --tinta-2: #c3c2b7;
+    --tinta-3: #a3a29a;
+    --reticula: #2c2c2a;
+    --eje: #383835;
+    --borde: rgba(255, 255, 255, 0.10);
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+    --serie-gris: #898781;
+    --lavado: rgba(57, 135, 229, 0.16);
+    --bueno: #0ca30c;
+    --critico: #e66767;
+    --aviso-texto: #fab219;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plano: #0d0d0d;
+  --superficie: #1a1a19;
+  --tinta: #f0efec;
+  --tinta-2: #c3c2b7;
+  --tinta-3: #a3a29a;
+  --reticula: #2c2c2a;
+  --eje: #383835;
+  --borde: rgba(255, 255, 255, 0.10);
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-gris: #898781;
+  --lavado: rgba(57, 135, 229, 0.16);
+  --bueno: #0ca30c;
+  --critico: #e66767;
+  --aviso-texto: #fab219;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--plano);
+  color: var(--tinta);
+  font: 15px/1.5 var(--fuente);
+}
+main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 56px; display: grid; gap: 22px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 28px; letter-spacing: -0.01em; }
+h2 { font-size: 18px; }
+h3 { font-size: 14px; font-weight: 600; }
+p { margin: 0; }
+.resumen { max-width: 72ch; color: var(--tinta-2); margin-top: 8px; }
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.encabezado { display: grid; gap: 4px; }
+.nota { color: var(--tinta-2); font-size: 13.5px; max-width: 78ch; }
+.controles { display: flex; flex-wrap: wrap; gap: 6px; }
+button.chip {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 5px 11px;
+  border-radius: 6px;
+  border: 1px solid var(--eje);
+  background: transparent;
+  color: var(--tinta-2);
+  cursor: pointer;
+}
+button.chip:hover { background: var(--lavado); color: var(--tinta); }
+button.chip[aria-pressed="true"] { background: var(--tinta); border-color: var(--tinta); color: var(--superficie); font-weight: 600; }
+button:focus-visible, th button:focus-visible, tr:focus-visible, summary:focus-visible { outline: 2px solid var(--serie-1); outline-offset: 2px; }
+.tabla-marco { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--reticula); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--tinta-2); font-weight: 600; vertical-align: bottom; white-space: normal; min-width: 72px; }
+th:first-child, td:first-child { text-align: left; }
+th.izq, td.izq { text-align: left; }
+th button { all: unset; cursor: pointer; }
+th button:hover { color: var(--tinta); text-decoration: underline; }
+tbody tr.seleccionable { cursor: pointer; }
+tbody tr.seleccionable:hover { background: var(--lavado); }
+tbody tr.activo { box-shadow: inset 3px 0 0 var(--serie-1); background: var(--lavado); }
+.pastilla { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600; }
+.pastilla.bueno { color: var(--bueno); }
+.pastilla.critico { color: var(--critico); }
+.pastilla.aviso { color: var(--aviso-texto); }
+.grupo-pastillas { display: inline-flex; flex-wrap: wrap; gap: 8px; }
+.barras { display: grid; gap: 8px; }
+button.barra {
+  all: unset;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(110px, 170px) 1fr;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px;
+}
+button.barra:hover { background: var(--lavado); }
+.barra-nombre { font-size: 13.5px; overflow-wrap: anywhere; }
+.barra.activa .barra-nombre { font-weight: 600; }
+.barra-pista { display: grid; grid-template-columns: 1fr 64px; align-items: center; gap: 8px; min-width: 0; }
+.barra-carril { min-width: 0; }
+.barra-relleno { display: block; height: 16px; border-radius: 0 4px 4px 0; background: var(--serie-1); opacity: 0.45; min-width: 2px; }
+.barra.activa .barra-relleno { opacity: 1; }
+.barra-valor { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+.seis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px; }
+.grafica { min-width: 0; display: grid; gap: 6px; }
+.lienzo { position: relative; width: 100%; min-width: 0; }
+.lienzo svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--tinta-2); }
+.leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.muestra { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.parametros { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; }
+.parametros code { font-family: inherit; color: var(--tinta-2); }
+.parametros b { font-variant-numeric: tabular-nums; }
+details summary { cursor: pointer; font-size: 13.5px; color: var(--tinta-2); }
+details[open] summary { margin-bottom: 10px; }
+td.ajustes { white-space: normal; min-width: 280px; text-align: left; color: var(--tinta-2); }
+.ayuda {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--superficie);
+  color: var(--tinta);
+  border: 1px solid var(--eje);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  max-width: 300px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  display: none;
+}
+.ayuda b { display: block; margin-bottom: 2px; }
+svg text { font-family: var(--fuente); }
+.t-eje { fill: var(--tinta-3); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.t-rot { fill: var(--tinta-2); font-size: 11.5px; }
+@media (max-width: 480px) {
+  main { padding: 20px 16px 40px; }
+  h1 { font-size: 24px; }
+  .tarjeta { padding: 14px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Torneo de modelos: precio de vivienda</h1>
+    <p class="resumen" id="resumen"></p>
+  </header>
+
+  <section class="tarjeta">
+    <div class="encabezado">
+      <h2>Resumen del torneo</h2>
+      <p class="nota">Métricas en el conjunto de validación, ordenadas por RMSE real. Selecciona un modelo para ver su detalle; también puedes ordenar por cualquier columna.</p>
+    </div>
+    <div class="tabla-marco"><table id="tabla-resumen"></table></div>
+  </section>
+
+  <section class="tarjeta">
+    <div class="encabezado">
+      <h2>Comparar una métrica</h2>
+      <p class="nota" id="nota-metrica"></p>
+    </div>
+    <div class="controles" id="control-metrica" role="group" aria-label="Métrica"></div>
+    <div class="barras" id="barras"></div>
+  </section>
+
+  <section class="tarjeta">
+    <div class="encabezado">
+      <h2>Detalle por modelo</h2>
+      <p class="nota">Este selector cambia las gráficas de entrenamiento y validación.</p>
+    </div>
+    <div class="controles" id="control-modelo" role="group" aria-label="Modelo"></div>
+    <div class="encabezado">
+      <h3 id="titulo-parametros"></h3>
+      <div class="parametros" id="parametros"></div>
+    </div>
+    <div class="dos">
+      <div class="grafica">
+        <h3 id="titulo-configs"></h3>
+        <p class="nota">Una columna por configuración, de mejor a peor RMSE en CV. Escala propia de cada modelo.</p>
+        <div class="leyenda"><span><i class="punto" style="background:var(--serie-1)"></i>Filas retenidas (CV)</span><span><i class="punto" style="background:var(--serie-2)"></i>Filas de entrenamiento</span></div>
+        <div class="lienzo" id="g-configs"></div>
+      </div>
+      <div class="grafica">
+        <h3>RMSE log en los 10 folds, mejor configuración</h3>
+        <p class="nota">Si las líneas se separan mucho, el modelo memoriza. Misma escala para todos los modelos.</p>
+        <div class="leyenda"><span><i class="punto" style="background:var(--serie-1)"></i>Fold retenido (CV)</span><span><i class="punto" style="background:var(--serie-2)"></i>Filas de entrenamiento</span></div>
+        <div class="lienzo" id="g-folds"></div>
+      </div>
+    </div>
+    <details>
+      <summary>Ver las 20 configuraciones en una tabla</summary>
+      <div class="tabla-marco"><table id="tabla-configs"></table></div>
+    </details>
+    <div class="grafica">
+      <h3 id="titulo-dispersion"></h3>
+      <p class="nota">Puntos sobre la línea: predicción exacta. Por encima, el modelo sobreestima; por debajo, subestima.</p>
+      <div class="lienzo" id="g-dispersion" style="max-width:560px"></div>
+    </div>
+  </section>
+
+  <section class="tarjeta">
+    <div class="encabezado">
+      <h2>Salida de cada modelo en test</h2>
+      <p class="nota" id="nota-test"></p>
+    </div>
+    <div class="leyenda"><span><i class="muestra" style="background:var(--serie-1)"></i>Modelo</span><span><i class="muestra" style="background:var(--serie-2)"></i>Pipeline de inferencia (ganador)</span><span><i class="muestra" style="background:var(--serie-gris)"></i>SalePrice real de train.csv</span></div>
+    <div class="seis" id="densidades"></div>
+  </section>
+
+  <section class="tarjeta">
+    <div class="encabezado">
+      <h2>Reglas de coherencia</h2>
+      <p class="nota" id="nota-reglas"></p>
+    </div>
+    <div class="tabla-marco"><table id="tabla-reglas"></table></div>
+  </section>
+</main>
+<div class="ayuda" id="ayuda" role="status"></div>
+
+<script id="datos" type="application/json">
+{"ganador": "Gradient Boosting", "parametros": {"n_folds": 10, "n_configuraciones": 20, "registros_entrenamiento": 1166, "registros_validacion": 292, "registros_test": 1459, "rango_validacion": 719689.0000000005, "tolerancia_mediana": 0.15, "correlacion_minima": 0.9, "brecha_alerta": 0.05}, "malla": [0.0, 5000.0, 10000.0, 15000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 55000.0, 60000.0, 65000.0, 70000.0, 75000.0, 80000.0, 85000.0, 90000.0, 95000.0, 100000.0, 105000.0, 110000.0, 115000.0, 120000.0, 125000.0, 130000.0, 135000.0, 140000.0, 145000.0, 150000.0, 155000.0, 160000.0, 165000.0, 170000.0, 175000.0, 180000.0, 185000.0, 190000.0, 195000.0, 200000.0, 205000.0, 210000.0, 215000.0, 220000.0, 225000.0, 230000.0, 235000.0, 240000.0, 245000.0, 250000.0, 255000.0, 260000.0, 265000.0, 270000.0, 275000.0, 280000.0, 285000.0, 290000.0, 295000.0, 300000.0, 305000.0, 310000.0, 315000.0, 320000.0, 325000.0, 330000.0, 335000.0, 340000.0, 345000.0, 350000.0, 355000.0, 360000.0, 365000.0, 370000.0, 375000.0, 380000.0, 385000.0, 390000.0, 395000.0, 400000.0, 405000.0, 410000.0, 415000.0, 420000.0, 425000.0, 430000.0, 435000.0, 440000.0, 445000.0, 450000.0, 455000.0, 460000.0, 465000.0, 470000.0, 475000.0, 480000.0, 485000.0, 490000.0, 495000.0, 500000.0, 505000.0, 510000.0, 515000.0, 520000.0, 525000.0, 530000.0, 535000.0, 540000.0, 545000.0, 550000.0, 555000.0, 560000.0, 565000.0, 570000.0, 575000.0, 580000.0, 585000.0, 590000.0, 595000.0, 600000.0, 605000.0, 610000.0, 615000.0, 620000.0, 625000.0, 630000.0, 635000.0, 640000.0, 645000.0, 650000.0, 655000.0, 660000.0, 665000.0, 670000.0, 675000.0, 680000.0, 685000.0, 690000.0, 695000.0, 700000.0, 705000.0, 710000.0, 715000.0, 720000.0, 725000.0, 730000.0, 735000.0, 740000.0, 745000.0, 750000.0, 755000.0, 760000.0, 765000.0, 770000.0, 775000.0, 780000.0, 785000.0, 790000.0, 795000.0, 800000.0], "train": {"resumen": {"media": 180921.19589041095, "mediana": 163000.0, "desv": 79442.50288288662, "min": 34900.0, "max": 755000.0, "p05": 88000.0, "p95": 326099.9999999999}, "densidad": [1.136e-08, 1.9799e-08, 3.2624e-08, 5.1066e-08, 7.638e-08, 1.09925e-07, 1.53408e-07, 2.0926e-07, 2.81005e-07, 3.73452e-07, 4.92491e-07, 6.44411e-07, 8.34847e-07, 1.067694e-06, 1.344504e-06, 1.664736e-06, 2.026856e-06, 2.429666e-06, 2.872938e-06, 3.356581e-06, 3.878263e-06, 4.430269e-06, 4.996895e-06, 5.553698e-06, 6.069368e-06, 6.510238e-06, 6.84658e-06, 7.059073e-06, 7.143396e-06, 7.111149e-06, 6.986339e-06, 6.798348e-06, 6.57377e-06, 6.330134e-06, 6.073769e-06, 5.80229e-06, 5.510204e-06, 5.19495e-06, 4.860749e-06, 4.518893e-06, 4.184787e-06, 3.873342e-06, 3.594771e-06, 3.352333e-06, 3.142577e-06, 2.957641e-06, 2.788486e-06, 2.627793e-06, 2.471562e-06, 2.319096e-06, 2.171674e-06, 2.030756e-06, 1.89662e-06, 1.768065e-06, 1.643223e-06, 1.520978e-06, 1.402198e-06, 1.290035e-06, 1.189012e-06, 1.103214e-06, 1.034362e-06, 9.80675e-07, 9.37079e-07, 8.96709e-07, 8.53071e-07, 8.01987e-07, 7.42627e-07, 6.77402e-07, 6.10958e-07, 5.48734e-07, 4.9554e-07, 4.54461e-07, 4.26249e-07, 4.09273e-07, 4.00026e-07, 3.94065e-07, 3.87111e-07, 3.76028e-07, 3.59381e-07, 3.37479e-07, 3.11958e-07, 2.85093e-07, 2.59075e-07, 2.35467e-07, 2.14937e-07, 1.97322e-07, 1.8192e-07, 1.67884e-07, 1.54566e-07, 1.41676e-07, 1.29262e-07, 1.17529e-07, 1.06649e-07, 9.6636e-08, 8.7336e-08, 7.8526e-08, 7.0022e-08, 6.1757e-08, 5.3802e-08, 4.6339e-08, 3.963e-08, 3.3992e-08, 2.976e-08, 2.7232e-08, 2.6589e-08, 2.7795e-08, 3.0543e-08, 3.4258e-08, 3.8187e-08, 4.1545e-08, 4.3697e-08, 4.4292e-08, 4.3333e-08, 4.114e-08, 3.8229e-08, 3.5166e-08, 3.2449e-08, 3.0427e-08, 2.9283e-08, 2.9018e-08, 2.945e-08, 3.0214e-08, 3.0822e-08, 3.0762e-08, 2.964e-08, 2.7298e-08, 2.3865e-08, 1.971e-08, 1.5328e-08, 1.1198e-08, 7.672e-09, 4.923e-09, 2.956e-09, 1.66e-09, 8.74e-10, 4.38e-10, 2.29e-10, 1.71e-10, 2.41e-10, 4.72e-10, 9.49e-10, 1.811e-09, 3.234e-09, 5.393e-09, 8.394e-09, 1.22e-08, 1.6559e-08, 2.0996e-08, 2.4872e-08, 2.7532e-08, 2.848e-08, 2.7532e-08, 2.4872e-08, 2.0996e-08, 1.6559e-08, 1.22e-08, 8.394e-09, 5.393e-09, 3.234e-09, 1.81e-09, 9.45e-10]}, "validacion_real": [154500, 325000, 115000, 159000, 315500, 75500, 311500, 146000, 84500, 135500, 145000, 130000, 81000, 214000, 181000, 134500, 183500, 135000, 118400, 226000, 155000, 210000, 173500, 129000, 192000, 153900, 181134, 141000, 181000, 208900, 127000, 284000, 200500, 135750, 255000, 140000, 138000, 219500, 310000, 97000, 114500, 205000, 119500, 253293, 128500, 117500, 115000, 127000, 451950, 144000, 119000, 196000, 115000, 287000, 144500, 260000, 213000, 175000, 107000, 107500, 68500, 154000, 317000, 264132, 283463, 243000, 109000, 305000, 93500, 176000, 118858, 134000, 109008, 93500, 611657, 173000, 348000, 341000, 141000, 124900, 118000, 67000, 113000, 91300, 149500, 133000, 266000, 190000, 155900, 155835, 153500, 152000, 124500, 301000, 136500, 169990, 205000, 183900, 204900, 260000, 163500, 224900, 244000, 132000, 194000, 156500, 156000, 275000, 145000, 135000, 60000, 124000, 127000, 137500, 213500, 119000, 107900, 123000, 112000, 284000, 133000, 149000, 169000, 207000, 175000, 137000, 236000, 79500, 144000, 162900, 185900, 369900, 197900, 104000, 35311, 337500, 367294, 130250, 230000, 755000, 403000, 132000, 178000, 136500, 145000, 123000, 250000, 187100, 133900, 67000, 137500, 155000, 200624, 154300, 91000, 136000, 108959, 140000, 86000, 131400, 179900, 144000, 293077, 144500, 118500, 141000, 239000, 276000, 556581, 244400, 360000, 103200, 102000, 151000, 285000, 134432, 113000, 187500, 125500, 177500, 179900, 55993, 132500, 135000, 255000, 140000, 271000, 246578, 202500, 75000, 122500, 108480, 160000, 171000, 196000, 225000, 197000, 40000, 172500, 154900, 280000, 175000, 147000, 315000, 185000, 135500, 239500, 139000, 140000, 110000, 225000, 143500, 128950, 172500, 241500, 262500, 194201, 143000, 130000, 126000, 142500, 254000, 217500, 66500, 201000, 155000, 68400, 64500, 173000, 102776, 84900, 165600, 120000, 135000, 220000, 153575, 195400, 147000, 277000, 143000, 105900, 242000, 194500, 438780, 185000, 107500, 165000, 176000, 129900, 115000, 192140, 160000, 145000, 86000, 158000, 127500, 115000, 119500, 175900, 240000, 395000, 165000, 128200, 275000, 311872, 214000, 153500, 144000, 115000, 180000, 465000, 180000, 253000, 85000, 101800, 148500, 137500, 318061, 143000, 140000, 192500, 92000, 197000, 109500, 297000, 185750, 230000, 89471, 260000, 189000, 108000, 124500], "modelos": [{"nombre": "Gradient Boosting", "tipo": "Ensamble", "metricas": {"rmse_real": 25995.216737820472, "rmse_normalizado": 0.03612006955479444, "rmse_log_train": 0.10632387842808992, "rmse_log_cv": 0.1262460845120177, "rmse_log_val": 0.1427130080906923, "brecha_val": 0.016466923578674603, "rmse_log_train_cv": 0.11024009575025626, "desv_folds": 0.017018967647217723, "brecha_cv": 0.01600598876176143}, "mejores_parametros": {"learning_rate": 0.096413, "max_depth": 2, "max_features": 0.310945, "min_samples_leaf": 9, "subsample": 0.908898}, "configuraciones": [{"parametros": {"learning_rate": 0.019907, "max_depth": 2, "max_features": 0.428404, "min_samples_leaf": 8, "subsample": 0.839463}, "rmse_cv": 0.13024671704880236, "desv": 0.018447655464480125, "rmse_train": 0.11406045936307659, "posicion": 13}, {"parametros": {"learning_rate": 0.00889, "max_depth": 4, "max_features": 0.369982, "min_samples_leaf": 11, "subsample": 0.94647}, "rmse_cv": 0.1297623929741858, "desv": 0.018034985261752904, "rmse_train": 0.10036394889393878, "posicion": 10}, {"parametros": {"learning_rate": 0.045919, "max_depth": 4, "max_features": 0.314409, "min_samples_leaf": 2, "subsample": 0.8888}, "rmse_cv": 0.12633624092494739, "desv": 0.01497484761954574, "rmse_train": 0.08647467372197039, "posicion": 2}, {"parametros": {"learning_rate": 0.159436, "max_depth": 3, "max_features": 0.427277, "min_samples_leaf": 1, "subsample": 0.721697}, "rmse_cv": 0.1284698379617546, "desv": 0.016639337611898595, "rmse_train": 0.08996938509262986, "posicion": 7}, {"parametros": {"learning_rate": 0.034647, "max_depth": 2, "max_features": 0.50386, "min_samples_leaf": 10, "subsample": 0.618666}, "rmse_cv": 0.12865722696179863, "desv": 0.018281387167457426, "rmse_train": 0.11346256833875538, "posicion": 9}, {"parametros": {"learning_rate": 0.181545, "max_depth": 4, "max_features": 0.619249, "min_samples_leaf": 15, "subsample": 0.847354}, "rmse_cv": 0.13363789579201896, "desv": 0.016948838832336475, "rmse_train": 0.08867801388573116, "posicion": 20}, {"parametros": {"learning_rate": 0.020497, "max_depth": 2, "max_features": 0.332515, "min_samples_leaf": 19, "subsample": 0.872123}, "rmse_cv": 0.13081404198527133, "desv": 0.018545736262271486, "rmse_train": 0.11788613906547503, "posicion": 16}, {"parametros": {"learning_rate": 0.026345, "max_depth": 3, "max_features": 0.96422, "min_samples_leaf": 14, "subsample": 0.923359}, "rmse_cv": 0.12984737001825072, "desv": 0.01762114994242853, "rmse_train": 0.10352898246378542, "posicion": 11}, {"parametros": {"learning_rate": 0.015381, "max_depth": 2, "max_features": 0.461626, "min_samples_leaf": 15, "subsample": 0.873305}, "rmse_cv": 0.13138331187582705, "desv": 0.018794166515431043, "rmse_train": 0.11700810643839965, "posicion": 18}, {"parametros": {"learning_rate": 0.047448, "max_depth": 4, "max_features": 0.421355, "min_samples_leaf": 17, "subsample": 0.703512}, "rmse_cv": 0.12790159908106885, "desv": 0.018271755080068168, "rmse_train": 0.1018653399069405, "posicion": 6}, {"parametros": {"learning_rate": 0.057593, "max_depth": 3, "max_features": 0.597609, "min_samples_leaf": 10, "subsample": 0.82708}, "rmse_cv": 0.12702688544779875, "desv": 0.017645771063441736, "rmse_train": 0.10083939392370089, "posicion": 3}, {"parametros": {"learning_rate": 0.005612, "max_depth": 3, "max_features": 0.842593, "min_samples_leaf": 2, "subsample": 0.75806}, "rmse_cv": 0.13094921420895123, "desv": 0.01768642759269505, "rmse_train": 0.10824681561192592, "posicion": 17}, {"parametros": {"learning_rate": 0.152592, "max_depth": 4, "max_features": 0.945312, "min_samples_leaf": 8, "subsample": 0.828178}, "rmse_cv": 0.13052099739416165, "desv": 0.017048760749573906, "rmse_train": 0.079475386997712, "posicion": 15}, {"parametros": {"learning_rate": 0.034149, "max_depth": 3, "max_features": 0.527731, "min_samples_leaf": 16, "subsample": 0.898928}, "rmse_cv": 0.12863258591030163, "desv": 0.018539367481079955, "rmse_train": 0.10549230516770247, "posicion": 8}, {"parametros": {"learning_rate": 0.036609, "max_depth": 3, "max_features": 0.975679, "min_samples_leaf": 13, "subsample": 0.65637}, "rmse_cv": 0.12711648892295335, "desv": 0.018189460773527923, "rmse_train": 0.10555947535982013, "posicion": 4}, {"parametros": {"learning_rate": 0.096413, "max_depth": 2, "max_features": 0.310945, "min_samples_leaf": 9, "subsample": 0.908898}, "rmse_cv": 0.1262460845120177, "desv": 0.017018967647217723, "rmse_train": 0.11024009575025626, "posicion": 1}, {"parametros": {"learning_rate": 0.010407, "max_depth": 4, "max_features": 0.870823, "min_samples_leaf": 17, "subsample": 0.884537}, "rmse_cv": 0.1318939577399924, "desv": 0.01814066424393712, "rmse_train": 0.1022694792033648, "posicion": 19}, {"parametros": {"learning_rate": 0.092231, "max_depth": 4, "max_features": 0.351831, "min_samples_leaf": 7, "subsample": 0.860431}, "rmse_cv": 0.13028934242041487, "desv": 0.0162095135320009, "rmse_train": 0.08805701094352772, "posicion": 14}, {"parametros": {"learning_rate": 0.146147, "max_depth": 2, "max_features": 0.736309, "min_samples_leaf": 2, "subsample": 0.638164}, "rmse_cv": 0.12991825634208978, "desv": 0.01678522232437421, "rmse_train": 0.10648851312255354, "posicion": 12}, {"parametros": {"learning_rate": 0.019636, "max_depth": 3, "max_features": 0.527628, "min_samples_leaf": 3, "subsample": 0.836519}, "rmse_cv": 0.12749221666521487, "desv": 0.01728881450493779, "rmse_train": 0.1019737264237451, "posicion": 5}], "folds_cv": [0.11457674496500914, 0.11830466341721856, 0.16010244888392372, 0.1268831306194362, 0.10754582665140915, 0.13630236165189152, 0.14909787502490782, 0.11597287025726766, 0.10469378588624076, 0.12898113776287254], "folds_train": [0.1177325299545618, 0.10876964081936573, 0.11303877646687056, 0.09907059077175108, 0.11508047370261622, 0.1094548946930192, 0.10755891941779111, 0.10954106198290033, 0.11440238368867148, 0.10775168600501499], "validacion_predicho": [139950, 351777, 107828, 153579, 327547, 71802, 222162, 146455, 71576, 114874, 141223, 122873, 95667, 204254, 181512, 132883, 200109, 134080, 104395, 209870, 182665, 235321, 182423, 129446, 201386, 167262, 180444, 114365, 177810, 195804, 116416, 269796, 255608, 106562, 255549, 151286, 150457, 211684, 333807, 89872, 122240, 236674, 118099, 356913, 128761, 125183, 119482, 128186, 449751, 133622, 115063, 194363, 106567, 377972, 155770, 243889, 198869, 167883, 137113, 101717, 60455, 153145, 311743, 258196, 279800, 219945, 97714, 335001, 111869, 153405, 123888, 130163, 108360, 86355, 499076, 181846, 323301, 311170, 136192, 110035, 101877, 100147, 121391, 97169, 143226, 132438, 270983, 203216, 149188, 183101, 144859, 160897, 113449, 256375, 114684, 173197, 167804, 178996, 198828, 240722, 185886, 206055, 249742, 120808, 182335, 163875, 140433, 269968, 142405, 171962, 56378, 129474, 138835, 133171, 199907, 120740, 103560, 104779, 137698, 286316, 121414, 155034, 176671, 163723, 183326, 126840, 233966, 99965, 150542, 185198, 198991, 387212, 197186, 118510, 65317, 337503, 349915, 135390, 230816, 599330, 372770, 126258, 181678, 157393, 145609, 127414, 231438, 192495, 118988, 68573, 121527, 147714, 263035, 144095, 96810, 125989, 144828, 143915, 72064, 140520, 212738, 143314, 308732, 151802, 112853, 122286, 226402, 329971, 475225, 203668, 393146, 84259, 110431, 155172, 367383, 151519, 133892, 225929, 121505, 183628, 166981, 95998, 133608, 143823, 260463, 132625, 255033, 231642, 183833, 83533, 119120, 106566, 155429, 137275, 194912, 179034, 218337, 94553, 220742, 144913, 215347, 171414, 120330, 355928, 191298, 127700, 248193, 139497, 156131, 117793, 230092, 142281, 106544, 159222, 189630, 275382, 202869, 151494, 149828, 139437, 136806, 227041, 203927, 107074, 231471, 140716, 100671, 102644, 167875, 90835, 100828, 186465, 126720, 127271, 225923, 122234, 197076, 152421, 224328, 136942, 92749, 282617, 195853, 440756, 189528, 124501, 149072, 180644, 132636, 89065, 176347, 177335, 134604, 80964, 140828, 145541, 121363, 105476, 182400, 278817, 289109, 178525, 128825, 229528, 294029, 231669, 168632, 152558, 110330, 170337, 435050, 215528, 250825, 95922, 95776, 132931, 153925, 292519, 222196, 147100, 199161, 84843, 200505, 101604, 320476, 177269, 212960, 118292, 261284, 190686, 117911, 108542], "test": {"resumen": {"media": 178540.91834632153, "mediana": 157102.95891640414, "desv": 78190.10647413875, "min": 52282.03616278383, "max": 572664.0722474607, "p05": 91731.21163529862, "p95": 332790.33778110665}, "densidad": [1.215e-09, 2.883e-09, 6.405e-09, 1.3342e-08, 2.6096e-08, 4.8029e-08, 8.3385e-08, 1.36978e-07, 2.13686e-07, 3.17911e-07, 4.53217e-07, 6.22315e-07, 8.27398e-07, 1.070684e-06, 1.354967e-06, 1.684003e-06, 2.062617e-06, 2.496345e-06, 2.990306e-06, 3.546971e-06, 4.162835e-06, 4.824667e-06, 5.506719e-06, 6.170566e-06, 6.768724e-06, 7.252033e-06, 7.579338e-06, 7.726909e-06, 7.694679e-06, 7.506964e-06, 7.206906e-06, 6.845963e-06, 6.47165e-06, 6.117483e-06, 5.798172e-06, 5.511009e-06, 5.242037e-06, 4.974161e-06, 4.694298e-06, 4.397553e-06, 4.087806e-06, 3.775204e-06, 3.471925e-06, 3.187888e-06, 2.927956e-06, 2.691485e-06, 2.4741e-06, 2.270673e-06, 2.078103e-06, 1.896756e-06, 1.730154e-06, 1.583278e-06, 1.460327e-06, 1.362898e-06, 1.289219e-06, 1.234614e-06, 1.192861e-06, 1.157816e-06, 1.124683e-06, 1.090565e-06, 1.054274e-06, 1.015662e-06, 9.74817e-07, 9.31491e-07, 8.84968e-07, 8.34423e-07, 7.79582e-07, 7.21273e-07, 6.61523e-07, 6.03056e-07, 5.48464e-07, 4.99503e-07, 4.56891e-07, 4.20624e-07, 3.90499e-07, 3.66439e-07, 3.48389e-07, 3.35892e-07, 3.2767e-07, 3.21557e-07, 3.14931e-07, 3.05494e-07, 2.92037e-07, 2.74809e-07, 2.55291e-07, 2.3548e-07, 2.17068e-07, 2.00899e-07, 1.8696e-07, 1.7482e-07, 1.64208e-07, 1.55391e-07, 1.49123e-07, 1.46206e-07, 1.46887e-07, 1.50404e-07, 1.54927e-07, 1.57976e-07, 1.57172e-07, 1.5102e-07, 1.39404e-07, 1.23595e-07, 1.05785e-07, 8.836e-08, 7.3233e-08, 6.1436e-08, 5.3069e-08, 4.7536e-08, 4.3906e-08, 4.1254e-08, 3.8875e-08, 3.6351e-08, 3.3499e-08, 3.0278e-08, 2.6713e-08, 2.287e-08, 1.8869e-08, 1.4893e-08, 1.1168e-08, 7.908e-09, 5.263e-09, 3.28e-09, 1.908e-09, 1.035e-09, 5.22e-10, 2.45e-10, 1.07e-10, 4.3e-11, 1.6e-11, 6e-12, 2e-12, 1e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.036178166157029845, "correlacion": 1.0, "diferencia_media_abs": 0.0}, "descartado": false, "razones": [], "alerta_sobreajuste": false}, {"nombre": "Random Forest", "tipo": "Ensamble", "metricas": {"rmse_real": 27975.710661991718, "rmse_normalizado": 0.038871944217560225, "rmse_log_train": 0.06641949683304514, "rmse_log_cv": 0.13227922809815457, "rmse_log_val": 0.14858687169103071, "brecha_val": 0.016307643592876148, "rmse_log_train_cv": 0.06663507958996936, "desv_folds": 0.017713888924643206, "brecha_cv": 0.0656441485081852}, "mejores_parametros": {"max_depth": 17, "max_features": 0.434636, "min_samples_leaf": 2}, "configuraciones": [{"parametros": {"max_depth": 10, "max_features": 0.677926, "min_samples_leaf": 8}, "rmse_cv": 0.14039389103285504, "desv": 0.019447775215277498, "rmse_train": 0.11038840234306446, "posicion": 12}, {"parametros": {"max_depth": 10, "max_features": 0.4675, "min_samples_leaf": 7}, "rmse_cv": 0.13852232641257226, "desv": 0.01982340074384053, "rmse_train": 0.10842548881193517, "posicion": 10}, {"parametros": {"max_depth": 14, "max_features": 0.475549, "min_samples_leaf": 5}, "rmse_cv": 0.13624064154226945, "desv": 0.01917543374513654, "rmse_train": 0.09748240251258126, "posicion": 6}, {"parametros": {"max_depth": 7, "max_features": 0.28572, "min_samples_leaf": 3}, "rmse_cv": 0.13786119258389068, "desv": 0.01871910411423845, "rmse_train": 0.10243642098714434, "posicion": 8}, {"parametros": {"max_depth": 5, "max_features": 0.633199, "min_samples_leaf": 6}, "rmse_cv": 0.14861287791354574, "desv": 0.01999777832812163, "rmse_train": 0.12622695942991086, "posicion": 18}, {"parametros": {"max_depth": 5, "max_features": 0.309095, "min_samples_leaf": 5}, "rmse_cv": 0.14842499555028313, "desv": 0.020454525347773644, "rmse_train": 0.12875719309241138, "posicion": 17}, {"parametros": {"max_depth": 4, "max_features": 0.382545, "min_samples_leaf": 6}, "rmse_cv": 0.15903704906179367, "desv": 0.021770308436135213, "rmse_train": 0.1448240590702688, "posicion": 20}, {"parametros": {"max_depth": 15, "max_features": 0.213837, "min_samples_leaf": 10}, "rmse_cv": 0.14539363707832392, "desv": 0.02107485879007593, "rmse_train": 0.12573292206739017, "posicion": 16}, {"parametros": {"max_depth": 19, "max_features": 0.339663, "min_samples_leaf": 3}, "rmse_cv": 0.13359265078515023, "desv": 0.018117594438200723, "rmse_train": 0.08235549060142183, "posicion": 4}, {"parametros": {"max_depth": 15, "max_features": 0.508541, "min_samples_leaf": 9}, "rmse_cv": 0.14072098370699296, "desv": 0.020734787873310245, "rmse_train": 0.11526978472184841, "posicion": 13}, {"parametros": {"max_depth": 6, "max_features": 0.715964, "min_samples_leaf": 7}, "rmse_cv": 0.14361592497058576, "desv": 0.019526260037004983, "rmse_train": 0.11643315676677715, "posicion": 15}, {"parametros": {"max_depth": 12, "max_features": 0.239031, "min_samples_leaf": 4}, "rmse_cv": 0.13756027096133666, "desv": 0.01863344258167338, "rmse_train": 0.09812995227430184, "posicion": 7}, {"parametros": {"max_depth": 17, "max_features": 0.685038, "min_samples_leaf": 9}, "rmse_cv": 0.14126575452046697, "desv": 0.01970688157864724, "rmse_train": 0.11380255099915355, "posicion": 14}, {"parametros": {"max_depth": 5, "max_features": 0.61054, "min_samples_leaf": 7}, "rmse_cv": 0.14893813826361113, "desv": 0.020259558381165724, "rmse_train": 0.1273240397347722, "posicion": 19}, {"parametros": {"max_depth": 15, "max_features": 0.497106, "min_samples_leaf": 3}, "rmse_cv": 0.13333497965329238, "desv": 0.01832798858522444, "rmse_train": 0.07956495981024608, "posicion": 3}, {"parametros": {"max_depth": 17, "max_features": 0.434636, "min_samples_leaf": 2}, "rmse_cv": 0.13227922809815457, "desv": 0.017713888924643206, "rmse_train": 0.06663507958996936, "posicion": 1}, {"parametros": {"max_depth": 11, "max_features": 0.653217, "min_samples_leaf": 6}, "rmse_cv": 0.13825548373335234, "desv": 0.0193210931649785, "rmse_train": 0.1015854195209609, "posicion": 9}, {"parametros": {"max_depth": 13, "max_features": 0.54062, "min_samples_leaf": 2}, "rmse_cv": 0.1326954213368574, "desv": 0.01773176520982214, "rmse_train": 0.06614529712894687, "posicion": 2}, {"parametros": {"max_depth": 15, "max_features": 0.763699, "min_samples_leaf": 4}, "rmse_cv": 0.1358759014461211, "desv": 0.017948034483941416, "rmse_train": 0.08710605451042885, "posicion": 5}, {"parametros": {"max_depth": 17, "max_features": 0.636363, "min_samples_leaf": 8}, "rmse_cv": 0.13995099157294538, "desv": 0.019607214387638124, "rmse_train": 0.11068474088698181, "posicion": 11}], "folds_cv": [0.1252598094967683, 0.12300561085537573, 0.16326273143742437, 0.12783652300378018, 0.10815603812286025, 0.14782993116532817, 0.15100422199459398, 0.11495672182121558, 0.11425326534411542, 0.14722742774008346], "folds_train": [0.06715465273717092, 0.06562225515005933, 0.06391883985415435, 0.0678382890505964, 0.06801556741520977, 0.06579259492421295, 0.06498206070745331, 0.06769793685886753, 0.0679907862460931, 0.06733781295587606], "validacion_predicho": [139389, 320195, 113461, 153450, 307482, 77961, 211192, 149963, 77551, 111871, 141977, 119230, 97510, 214651, 180138, 128809, 196969, 138752, 111776, 208777, 170242, 218480, 180245, 128275, 198283, 174173, 184447, 110288, 178186, 196026, 118097, 263086, 204206, 113520, 259311, 146438, 143246, 207490, 301605, 96988, 128469, 228528, 120369, 371266, 132026, 125694, 114108, 129011, 422004, 141287, 118019, 181098, 113595, 329446, 143814, 252021, 193725, 155954, 144013, 105396, 73083, 146555, 307684, 257875, 276986, 196945, 103420, 308151, 116050, 170855, 130711, 135920, 112366, 95602, 479311, 179750, 326216, 300429, 138506, 117689, 95441, 107559, 123838, 100245, 151190, 122705, 254228, 205115, 141142, 178643, 132778, 165294, 119228, 253817, 123768, 178283, 164901, 167361, 214057, 234775, 169514, 210279, 242436, 136237, 185057, 160144, 140222, 272662, 144664, 175001, 61449, 125926, 134389, 128910, 221980, 111629, 108825, 111552, 140362, 293769, 142515, 143846, 177948, 158652, 185013, 125431, 233047, 102742, 140891, 181919, 185401, 349670, 202275, 122248, 74191, 333454, 366211, 125638, 240885, 541424, 347678, 121185, 180918, 155689, 139967, 126847, 212800, 188530, 122827, 72900, 124179, 150412, 238554, 143686, 105486, 135059, 139219, 140577, 70657, 137989, 205839, 138683, 297761, 147641, 119939, 129431, 215893, 342561, 446651, 225449, 353837, 93942, 126231, 154256, 330172, 162720, 133043, 210575, 119304, 172181, 164338, 102718, 134789, 139835, 257067, 143122, 265535, 203726, 194669, 87176, 124000, 109714, 144415, 144410, 193627, 143276, 222752, 104188, 222235, 132860, 202451, 175556, 116005, 340315, 196255, 127752, 231680, 135663, 145228, 112485, 232054, 148963, 114071, 170619, 174617, 273903, 188221, 145829, 145623, 139865, 137778, 224605, 202884, 103130, 234946, 144288, 107984, 104618, 171577, 106791, 99953, 181598, 119942, 130976, 224754, 121232, 198303, 148316, 224543, 124086, 99249, 249543, 202985, 360432, 190846, 120919, 149412, 165098, 141426, 98992, 178668, 171567, 132744, 87898, 142560, 140273, 119157, 109195, 178368, 267037, 322967, 174872, 123728, 226179, 279838, 213198, 169807, 140274, 121609, 172597, 391491, 211087, 245747, 102092, 104413, 138281, 136132, 303777, 193372, 144035, 207071, 88263, 188737, 104640, 316567, 183352, 222576, 117376, 238504, 180970, 123772, 113431], "test": {"resumen": {"media": 176444.77311322364, "mediana": 156285.55153505178, "desv": 71529.96674764555, "min": 56019.9595307598, "max": 486286.9812219494, "p05": 95066.97769851984, "p95": 323112.9650169269}, "densidad": [1.9e-10, 5.49e-10, 1.458e-09, 3.576e-09, 8.113e-09, 1.706e-08, 3.3363e-08, 6.0928e-08, 1.0445e-07, 1.69168e-07, 2.60773e-07, 3.85613e-07, 5.51069e-07, 7.65681e-07, 1.038591e-06, 1.378322e-06, 1.791493e-06, 2.282174e-06, 2.851855e-06, 3.498953e-06, 4.21648e-06, 4.98764e-06, 5.781151e-06, 6.549498e-06, 7.232846e-06, 7.769018e-06, 8.107131e-06, 8.220686e-06, 8.115648e-06, 7.83031e-06, 7.42613e-06, 6.971814e-06, 6.52592e-06, 6.124303e-06, 5.776764e-06, 5.472978e-06, 5.193577e-06, 4.920717e-06, 4.644127e-06, 4.361852e-06, 4.07747e-06, 3.796359e-06, 3.522902e-06, 3.259404e-06, 3.006646e-06, 2.76537e-06, 2.537663e-06, 2.327238e-06, 2.138224e-06, 1.973077e-06, 1.830909e-06, 1.70735e-06, 1.596128e-06, 1.491515e-06, 1.390409e-06, 1.293139e-06, 1.202855e-06, 1.123894e-06, 1.059799e-06, 1.011609e-06, 9.76963e-07, 9.50359e-07, 9.24612e-07, 8.9307e-07, 8.51765e-07, 8.00601e-07, 7.43077e-07, 6.84717e-07, 6.30938e-07, 5.85248e-07, 5.48386e-07, 5.18546e-07, 4.92421e-07, 4.66578e-07, 4.38669e-07, 4.08073e-07, 3.75781e-07, 3.43672e-07, 3.1356e-07, 2.86525e-07, 2.62815e-07, 2.42265e-07, 2.24829e-07, 2.10815e-07, 2.0065e-07, 1.94378e-07, 1.91238e-07, 1.89626e-07, 1.87448e-07, 1.8273e-07, 1.74207e-07, 1.61691e-07, 1.46045e-07, 1.28779e-07, 1.11438e-07, 9.5058e-08, 7.9976e-08, 6.6027e-08, 5.2955e-08, 4.0753e-08, 2.9735e-08, 2.0366e-08, 1.2995e-08, 7.682e-09, 4.191e-09, 2.105e-09, 9.71e-10, 4.11e-10, 1.6e-10, 5.7e-11, 1.8e-11, 6e-12, 2e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.04119293536778046, "correlacion": 0.9891382587723783, "diferencia_media_abs": 8078.72041858593}, "descartado": false, "razones": [], "alerta_sobreajuste": true}, {"nombre": "Red neuronal (MLP)", "tipo": "Red neuronal", "metricas": {"rmse_real": 29828.79660410808, "rmse_normalizado": 0.04144678688170593, "rmse_log_train": 0.11908587014655776, "rmse_log_cv": 0.1281563888064479, "rmse_log_val": 0.1457578647985698, "brecha_val": 0.017601475992121918, "rmse_log_train_cv": 0.11518779440358969, "desv_folds": 0.013785670343462944, "brecha_cv": 0.012968594402858205}, "mejores_parametros": {"alpha": 4.929054, "hidden_layer_sizes": "(64,)", "learning_rate_init": 0.000231}, "configuraciones": [{"parametros": {"alpha": 0.007459, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000233}, "rmse_cv": 0.14590974852665578, "desv": 0.015110720025241706, "rmse_train": 0.11507767176872245, "posicion": 19}, {"parametros": {"alpha": 0.791507, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000205}, "rmse_cv": 0.1397672572206319, "desv": 0.015829473179697268, "rmse_train": 0.1106325630851263, "posicion": 11}, {"parametros": {"alpha": 0.000603, "hidden_layer_sizes": "(64, 32)", "learning_rate_init": 0.000829}, "rmse_cv": 0.13903768712152326, "desv": 0.010958128153750591, "rmse_train": 0.10059269883843294, "posicion": 10}, {"parametros": {"alpha": 0.004662, "hidden_layer_sizes": "(128, 64)", "learning_rate_init": 0.002607}, "rmse_cv": 0.13474549508276432, "desv": 0.013358841404842099, "rmse_train": 0.10300361166185004, "posicion": 5}, {"parametros": {"alpha": 0.000127, "hidden_layer_sizes": "(64,)", "learning_rate_init": 0.00278}, "rmse_cv": 0.14303319727310043, "desv": 0.014154303859230891, "rmse_train": 0.10536415664067333, "posicion": 16}, {"parametros": {"alpha": 4.929054, "hidden_layer_sizes": "(64,)", "learning_rate_init": 0.000231}, "rmse_cv": 0.1281563888064479, "desv": 0.013785670343462944, "rmse_train": 0.11518779440358969, "posicion": 1}, {"parametros": {"alpha": 0.000826, "hidden_layer_sizes": "(128, 64)", "learning_rate_init": 0.001672}, "rmse_cv": 0.135476840572419, "desv": 0.014726320070020395, "rmse_train": 0.10085625700614922, "posicion": 6}, {"parametros": {"alpha": 0.000108, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000382}, "rmse_cv": 0.14592851576102717, "desv": 0.01493650107174835, "rmse_train": 0.11491709459640369, "posicion": 20}, {"parametros": {"alpha": 0.114621, "hidden_layer_sizes": "(64,)", "learning_rate_init": 0.000124}, "rmse_cv": 0.14223987941850819, "desv": 0.014223779269288887, "rmse_train": 0.10806677996331775, "posicion": 14}, {"parametros": {"alpha": 7.392266, "hidden_layer_sizes": "(64, 32)", "learning_rate_init": 0.000817}, "rmse_cv": 0.12965557900587826, "desv": 0.013994911676340724, "rmse_train": 0.12268736905736026, "posicion": 2}, {"parametros": {"alpha": 0.843101, "hidden_layer_sizes": "(64, 32)", "learning_rate_init": 0.000582}, "rmse_cv": 0.13000907124781502, "desv": 0.012884484336279053, "rmse_train": 0.09649553463164583, "posicion": 3}, {"parametros": {"alpha": 8.244312, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000124}, "rmse_cv": 0.1327625365253767, "desv": 0.012622386170993921, "rmse_train": 0.12226766712261541, "posicion": 4}, {"parametros": {"alpha": 0.109075, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000796}, "rmse_cv": 0.1446029203437819, "desv": 0.015194750768001801, "rmse_train": 0.11182690674521407, "posicion": 17}, {"parametros": {"alpha": 0.000116, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.008536}, "rmse_cv": 0.13763094772359477, "desv": 0.013448951373309233, "rmse_train": 0.10983299466686218, "posicion": 8}, {"parametros": {"alpha": 1.101506, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000108}, "rmse_cv": 0.14252426210080588, "desv": 0.018813295587941974, "rmse_train": 0.11908783035937234, "posicion": 15}, {"parametros": {"alpha": 0.001427, "hidden_layer_sizes": "(128, 64)", "learning_rate_init": 0.000759}, "rmse_cv": 0.1366820196451076, "desv": 0.01579185388115734, "rmse_train": 0.10273780266176993, "posicion": 7}, {"parametros": {"alpha": 0.000408, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.004639}, "rmse_cv": 0.14111823225448586, "desv": 0.012884908581548197, "rmse_train": 0.1126279733670271, "posicion": 13}, {"parametros": {"alpha": 0.000736, "hidden_layer_sizes": "(32,)", "learning_rate_init": 0.000329}, "rmse_cv": 0.14570611436699926, "desv": 0.01492598875651191, "rmse_train": 0.11457430678490685, "posicion": 18}, {"parametros": {"alpha": 0.205405, "hidden_layer_sizes": "(64,)", "learning_rate_init": 0.000708}, "rmse_cv": 0.14033452340599695, "desv": 0.015035985258112039, "rmse_train": 0.10344813046537368, "posicion": 12}, {"parametros": {"alpha": 0.001096, "hidden_layer_sizes": "(128, 64)", "learning_rate_init": 0.000234}, "rmse_cv": 0.13773045928487065, "desv": 0.01503916758679304, "rmse_train": 0.10270281992734798, "posicion": 9}], "folds_cv": [0.12037002996706563, 0.1225345935772235, 0.14787806474218004, 0.12289379747496836, 0.1134958828202329, 0.13289493061474053, 0.153386353060876, 0.11940063774021797, 0.11000082612496553, 0.13870877194200815], "folds_train": [0.11565753904807545, 0.12197062417585736, 0.11177758653682121, 0.1149255759574632, 0.1164572609834726, 0.11473569379222921, 0.11208774666060431, 0.11620439692561461, 0.11560923477947903, 0.11245228517627995], "validacion_predicho": [135553, 346353, 110406, 154348, 319465, 80014, 217999, 149073, 77984, 122911, 133480, 121442, 103121, 210150, 183309, 134762, 197078, 132031, 108050, 222133, 174011, 203763, 185775, 133064, 219008, 163423, 187184, 111931, 182636, 194835, 118816, 279231, 240936, 108812, 279313, 145847, 152127, 211419, 326928, 94115, 120311, 244944, 110847, 353968, 123780, 133783, 109717, 128348, 419862, 133062, 112095, 206974, 127458, 317588, 155782, 247884, 207072, 158823, 145127, 103506, 74655, 157991, 297109, 244040, 290915, 205066, 99590, 331932, 107795, 156184, 118740, 128543, 108175, 89316, 455202, 190310, 317261, 315123, 133879, 114037, 108887, 99490, 121620, 100153, 146444, 116317, 264615, 222957, 145657, 191334, 143963, 163185, 114954, 256390, 118346, 180958, 153429, 179016, 196410, 255982, 186565, 218304, 254889, 115896, 198089, 175645, 146677, 265947, 145205, 183898, 65720, 111396, 141830, 129723, 209235, 118260, 103451, 110158, 122982, 301552, 136387, 151280, 173640, 165009, 215110, 119815, 232941, 91393, 150161, 188607, 189455, 338888, 190509, 133400, 73313, 354813, 352143, 128726, 240517, 482201, 349687, 115086, 172766, 157104, 144416, 128415, 201224, 192560, 127693, 76993, 112887, 143696, 216615, 145648, 96899, 125820, 132214, 143318, 88179, 141944, 199154, 131078, 283292, 146218, 112064, 141978, 223562, 326061, 418081, 212629, 386511, 83098, 109705, 149709, 326041, 142652, 129037, 220030, 119769, 169944, 165974, 98704, 127776, 140619, 258243, 135316, 274652, 229441, 196372, 96835, 122690, 105610, 154666, 164523, 200551, 176505, 218492, 95245, 226962, 131496, 219947, 177590, 113973, 322856, 209288, 132231, 244259, 128370, 153323, 115856, 244467, 147195, 110402, 154996, 196925, 252312, 206725, 143735, 146510, 128137, 133615, 236445, 207705, 107680, 230579, 132996, 97873, 104975, 165879, 100846, 97985, 174983, 121205, 126561, 239947, 122340, 197703, 159957, 224780, 131775, 105798, 248903, 200062, 375801, 191565, 111784, 150774, 173990, 136203, 99343, 172814, 172119, 131442, 92915, 137420, 138422, 121058, 109214, 176542, 271729, 295673, 190247, 126224, 224048, 313187, 225207, 169270, 153855, 108973, 176689, 454777, 224993, 250863, 106123, 96172, 135094, 151432, 297354, 209996, 142100, 200057, 92170, 187975, 105367, 292115, 177096, 222359, 112849, 257095, 201906, 118354, 112320], "test": {"resumen": {"media": 177030.39869000766, "mediana": 155912.74362196543, "desv": 72522.48553205513, "min": 65271.79251402867, "max": 469010.0416209007, "p05": 95954.30564926275, "p95": 329784.9638589353}, "densidad": [5e-11, 1.63e-10, 4.91e-10, 1.362e-09, 3.493e-09, 8.283e-09, 1.8216e-08, 3.7247e-08, 7.1063e-08, 1.27061e-07, 2.14039e-07, 3.41752e-07, 5.20579e-07, 7.61377e-07, 1.075216e-06, 1.472412e-06, 1.960428e-06, 2.540811e-06, 3.206093e-06, 3.93784e-06, 4.70669e-06, 5.474445e-06, 6.19763e-06, 6.831827e-06, 7.336307e-06, 7.678853e-06, 7.840615e-06, 7.820335e-06, 7.636564e-06, 7.326215e-06, 6.938571e-06, 6.525474e-06, 6.130359e-06, 5.77968e-06, 5.479657e-06, 5.219242e-06, 4.977799e-06, 4.734385e-06, 4.475365e-06, 4.198191e-06, 3.9108e-06, 3.627557e-06, 3.363568e-06, 3.129464e-06, 2.928305e-06, 2.755387e-06, 2.600626e-06, 2.452359e-06, 2.30117e-06, 2.14258e-06, 1.977986e-06, 1.81382e-06, 1.659296e-06, 1.52348e-06, 1.412565e-06, 1.328217e-06, 1.267429e-06, 1.223795e-06, 1.189518e-06, 1.15736e-06, 1.121948e-06, 1.080288e-06, 1.031698e-06, 9.77418e-07, 9.20115e-07, 8.63321e-07, 8.10752e-07, 7.65444e-07, 7.28746e-07, 6.99496e-07, 6.73871e-07, 6.46291e-07, 6.11276e-07, 5.65589e-07, 5.09695e-07, 4.4783e-07, 3.86603e-07, 3.32698e-07, 2.90667e-07, 2.61695e-07, 2.43748e-07, 2.32888e-07, 2.25019e-07, 2.17269e-07, 2.08485e-07, 1.98873e-07, 1.89205e-07, 1.80073e-07, 1.71529e-07, 1.63079e-07, 1.53891e-07, 1.43058e-07, 1.29856e-07, 1.14012e-07, 9.5913e-08, 7.6634e-08, 5.7711e-08, 4.0706e-08, 2.6757e-08, 1.6329e-08, 9.225e-09, 4.814e-09, 2.317e-09, 1.027e-09, 4.19e-10, 1.57e-10, 5.4e-11, 1.7e-11, 5e-12, 1e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.043480100478739625, "correlacion": 0.9854114055131713, "diferencia_media_abs": 8916.624854407051}, "descartado": false, "razones": [], "alerta_sobreajuste": false}, {"nombre": "Ridge", "tipo": "Regresión", "metricas": {"rmse_real": 30049.171044371662, "rmse_normalizado": 0.04175299475797413, "rmse_log_train": 0.1262130786586445, "rmse_log_cv": 0.1296234904665367, "rmse_log_val": 0.14276894820980188, "brecha_val": 0.013145457743265171, "rmse_log_train_cv": 0.1259142755721964, "desv_folds": 0.01311140312044699, "brecha_cv": 0.0037092148943403125}, "mejores_parametros": {"alpha": 24.658329}, "configuraciones": [{"parametros": {"alpha": 0.176702}, "rmse_cv": 0.12983050077436514, "desv": 0.012961955274751618, "rmse_train": 0.12582215437979138, "posicion": 8}, {"parametros": {"alpha": 506.157689}, "rmse_cv": 0.1344843385975543, "desv": 0.014809587474475942, "rmse_train": 0.13265682449616864, "posicion": 19}, {"parametros": {"alpha": 24.658329}, "rmse_cv": 0.1296234904665367, "desv": 0.01311140312044699, "rmse_train": 0.1259142755721964, "posicion": 1}, {"parametros": {"alpha": 3.907967}, "rmse_cv": 0.12978228917154672, "desv": 0.012984025314917791, "rmse_train": 0.12582503770501735, "posicion": 4}, {"parametros": {"alpha": 0.008632}, "rmse_cv": 0.12983285242152198, "desv": 0.012960973728892536, "rmse_train": 0.12582214820499724, "posicion": 14}, {"parametros": {"alpha": 0.008629}, "rmse_cv": 0.1298328524619017, "desv": 0.012960973712106817, "rmse_train": 0.12582214820498738, "posicion": 15}, {"parametros": {"alpha": 0.002231}, "rmse_cv": 0.12983294230550244, "desv": 0.012960936370244178, "rmse_train": 0.12582214819118342, "posicion": 16}, {"parametros": {"alpha": 157.4189}, "rmse_cv": 0.1302986080783687, "desv": 0.01380094674810241, "rmse_train": 0.12750737989211827, "posicion": 18}, {"parametros": {"alpha": 4.042873}, "rmse_cv": 0.12978068298478315, "desv": 0.012984832145024348, "rmse_train": 0.12582523557417385, "posicion": 3}, {"parametros": {"alpha": 17.718847}, "rmse_cv": 0.12965929188469122, "desv": 0.01306845841735415, "rmse_train": 0.1258730784223408, "posicion": 2}, {"parametros": {"alpha": 0.001329}, "rmse_cv": 0.129832954974373, "desv": 0.01296093110558693, "rmse_train": 0.1258221481905454, "posicion": 17}, {"parametros": {"alpha": 659.871107}, "rmse_cv": 0.1364406416350732, "desv": 0.015123684493216397, "rmse_train": 0.1348431589730662, "posicion": 20}, {"parametros": {"alpha": 98.777003}, "rmse_cv": 0.12980673284161282, "desv": 0.013531861621562504, "rmse_train": 0.12669871757895543, "posicion": 5}, {"parametros": {"alpha": 0.018795}, "rmse_cv": 0.12983270976399672, "desv": 0.012961033045648905, "rmse_train": 0.12582214826036134, "posicion": 11}, {"parametros": {"alpha": 0.01233}, "rmse_cv": 0.1298328005096736, "desv": 0.012960995310378722, "rmse_train": 0.1258221482203939, "posicion": 13}, {"parametros": {"alpha": 0.012602}, "rmse_cv": 0.1298327966910678, "desv": 0.012960996898052772, "rmse_train": 0.125822148221741, "posicion": 12}, {"parametros": {"alpha": 0.066904}, "rmse_cv": 0.12983203523583733, "desv": 0.012961313908459804, "rmse_train": 0.1258221490787829, "posicion": 9}, {"parametros": {"alpha": 1.407792}, "rmse_cv": 0.12981376181174845, "desv": 0.012969180410978928, "rmse_train": 0.12582253496157672, "posicion": 6}, {"parametros": {"alpha": 0.390544}, "rmse_cv": 0.12982753201124617, "desv": 0.012963205867082474, "rmse_train": 0.1258221783431973, "posicion": 7}, {"parametros": {"alpha": 0.055895}, "rmse_cv": 0.12983218947167768, "desv": 0.012961249629505556, "rmse_train": 0.1258221488104989, "posicion": 10}], "folds_cv": [0.12356180850966936, 0.1246411960114348, 0.14933609916478868, 0.12508697366627058, 0.1160781852937183, 0.13713086698868346, 0.15250413810867325, 0.12078447392407052, 0.11064768735614029, 0.1364634756419178], "folds_train": [0.12653677906282504, 0.12652976991566572, 0.12368287686785169, 0.1265481568483936, 0.127397116677966, 0.1251643050081819, 0.12306674014566443, 0.1270979151541606, 0.12804135752865642, 0.12507773851259835], "validacion_predicho": [134799, 352971, 110756, 152806, 318269, 77247, 226763, 151879, 75398, 117762, 133678, 116543, 96276, 211910, 183794, 135953, 199434, 132606, 110184, 221157, 184779, 209283, 189795, 126970, 220590, 165313, 190413, 110723, 184142, 196215, 115300, 281686, 216933, 105441, 281678, 147199, 157698, 212424, 348379, 90783, 115233, 255322, 111088, 333920, 123145, 137051, 110125, 124913, 431188, 130718, 112362, 209937, 110901, 321910, 158549, 254579, 209732, 155791, 148691, 103756, 67866, 156568, 292394, 247083, 286397, 211136, 97457, 341143, 110771, 160897, 116670, 128534, 106247, 82136, 457016, 197412, 328332, 319126, 131486, 113454, 108105, 102585, 119071, 96731, 140146, 116717, 262840, 224168, 148724, 195384, 161002, 153640, 111631, 260069, 112805, 184455, 161892, 185989, 201095, 243693, 189256, 217116, 259671, 118917, 200382, 179017, 147017, 263673, 142641, 179893, 61596, 115582, 141127, 127895, 210056, 117877, 99349, 103920, 126614, 304002, 129008, 154889, 173627, 160467, 208906, 114214, 244215, 89224, 147366, 186990, 196488, 335692, 192210, 127312, 63874, 361431, 345647, 127208, 246674, 485069, 367065, 116619, 169626, 161958, 143343, 123445, 204411, 195663, 121556, 77922, 112619, 138903, 231947, 149335, 91198, 116380, 126285, 145862, 84661, 140315, 200209, 125258, 285903, 151385, 116730, 130651, 227092, 309145, 407395, 207055, 392238, 83886, 110867, 150183, 338326, 131975, 127210, 219045, 121376, 176775, 165907, 96177, 130406, 142658, 264856, 137467, 278836, 229896, 200729, 86927, 123326, 106494, 160117, 171498, 206433, 174399, 226679, 91410, 227781, 128585, 216548, 181579, 117824, 330615, 209728, 126463, 246145, 131648, 162904, 109328, 246570, 146490, 112630, 157740, 206161, 259428, 209724, 142928, 146776, 125060, 128252, 239692, 205826, 102716, 233467, 139735, 93459, 100901, 168039, 97672, 97944, 175190, 120292, 121638, 246566, 120182, 199189, 157356, 228295, 132102, 104100, 254268, 208404, 358043, 186967, 114488, 150708, 176186, 131550, 97535, 170486, 174243, 135822, 92143, 134767, 140065, 127996, 106594, 178616, 270936, 300098, 190530, 122850, 223316, 293692, 221559, 167453, 151986, 106221, 185311, 409474, 224929, 252124, 100649, 92816, 133856, 157893, 287176, 207282, 141775, 200510, 88050, 192371, 106432, 286687, 173905, 226330, 115394, 257901, 209557, 110734, 107423], "test": {"resumen": {"media": 177897.21088103668, "mediana": 158759.4784016238, "desv": 73815.93215489922, "min": 59053.64222503328, "max": 493659.66957334225, "p05": 93933.96341234638, "p95": 330980.29088681703}, "densidad": [2.64e-10, 7.43e-10, 1.934e-09, 4.668e-09, 1.046e-08, 2.1807e-08, 4.2412e-08, 7.7203e-08, 1.32092e-07, 2.13521e-07, 3.28065e-07, 4.82327e-07, 6.83226e-07, 9.38353e-07, 1.255877e-06, 1.643545e-06, 2.106808e-06, 2.646534e-06, 3.256928e-06, 3.923999e-06, 4.624735e-06, 5.327216e-06, 5.992227e-06, 6.576886e-06, 7.040197e-06, 7.349545e-06, 7.486634e-06, 7.451484e-06, 7.263639e-06, 6.960012e-06, 6.589135e-06, 6.202243e-06, 5.842915e-06, 5.538206e-06, 5.294369e-06, 5.098827e-06, 4.92761e-06, 4.75531e-06, 4.563765e-06, 4.346605e-06, 4.10876e-06, 3.862134e-06, 3.619878e-06, 3.391681e-06, 3.181489e-06, 2.987759e-06, 2.805401e-06, 2.628304e-06, 2.451622e-06, 2.273422e-06, 2.095471e-06, 1.92297e-06, 1.763108e-06, 1.6227e-06, 1.50568e-06, 1.411523e-06, 1.335359e-06, 1.269843e-06, 1.207945e-06, 1.145396e-06, 1.081715e-06, 1.019446e-06, 9.62103e-07, 9.11929e-07, 8.68577e-07, 8.29289e-07, 7.90334e-07, 7.48862e-07, 7.04197e-07, 6.5802e-07, 6.13496e-07, 5.73851e-07, 5.41007e-07, 5.1474e-07, 4.9257e-07, 4.70455e-07, 4.44104e-07, 4.10523e-07, 3.69222e-07, 3.22573e-07, 2.75154e-07, 2.32329e-07, 1.98613e-07, 1.76382e-07, 1.65323e-07, 1.62745e-07, 1.64605e-07, 1.66872e-07, 1.6671e-07, 1.63062e-07, 1.56423e-07, 1.48043e-07, 1.39011e-07, 1.29691e-07, 1.19731e-07, 1.08509e-07, 9.5664e-08, 8.1408e-08, 6.6492e-08, 5.1935e-08, 3.8693e-08, 2.7437e-08, 1.8471e-08, 1.177e-08, 7.073e-09, 3.993e-09, 2.11e-09, 1.04e-09, 4.77e-10, 2.02e-10, 8e-11, 2.9e-11, 1e-11, 3e-12, 1e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.026015469928688306, "correlacion": 0.9859999502170526, "diferencia_media_abs": 8781.714599402663}, "descartado": false, "razones": [], "alerta_sobreajuste": false}, {"nombre": "ElasticNet", "tipo": "Regresión", "metricas": {"rmse_real": 30123.16055559578, "rmse_normalizado": 0.041855802375186726, "rmse_log_train": 0.12624036514404222, "rmse_log_cv": 0.1295800013760239, "rmse_log_val": 0.1426283235177459, "brecha_val": 0.013048322141721996, "rmse_log_train_cv": 0.12592434736450875, "desv_folds": 0.01323054985074171, "brecha_cv": 0.003655654011515158}, "mejores_parametros": {"alpha": 0.009164, "l1_ratio": 0.091805}, "configuraciones": [{"parametros": {"alpha": 0.000746, "l1_ratio": 0.905643}, "rmse_cv": 0.12965208535231026, "desv": 0.01313284572300706, "rmse_train": 0.12587632803292892, "posicion": 2}, {"parametros": {"alpha": 0.045706, "l1_ratio": 0.588793}, "rmse_cv": 0.14090380701229976, "desv": 0.015509378240743193, "rmse_train": 0.13959217562595153, "posicion": 18}, {"parametros": {"alpha": 6e-05, "l1_ratio": 0.190395}, "rmse_cv": 0.1298266636958289, "desv": 0.012964083546337385, "rmse_train": 0.12582217138719295, "posicion": 14}, {"parametros": {"alpha": 2e-05, "l1_ratio": 0.829559}, "rmse_cv": 0.129825045282767, "desv": 0.012964975783251302, "rmse_train": 0.12582218972101686, "posicion": 13}, {"parametros": {"alpha": 0.010129, "l1_ratio": 0.687265}, "rmse_cv": 0.13067858934367976, "desv": 0.014211086689355949, "rmse_train": 0.12802900851974006, "posicion": 16}, {"parametros": {"alpha": 1.3e-05, "l1_ratio": 0.922919}, "rmse_cv": 0.12982725703963433, "desv": 0.012963845199015432, "rmse_train": 0.1258221699998628, "posicion": 15}, {"parametros": {"alpha": 0.145282, "l1_ratio": 0.241105}, "rmse_cv": 0.14813506216840228, "desv": 0.016376006740232825, "rmse_train": 0.14704421618219984, "posicion": 19}, {"parametros": {"alpha": 8.1e-05, "l1_ratio": 0.215064}, "rmse_cv": 0.12982351559162023, "desv": 0.012965669140610836, "rmse_train": 0.12582220027603422, "posicion": 11}, {"parametros": {"alpha": 0.000332, "l1_ratio": 0.522281}, "rmse_cv": 0.1297548070243581, "desv": 0.013002829758424431, "rmse_train": 0.12582661240301413, "posicion": 7}, {"parametros": {"alpha": 0.001445, "l1_ratio": 0.312106}, "rmse_cv": 0.12967408622861662, "desv": 0.013077098461600767, "rmse_train": 0.1258482960953421, "posicion": 5}, {"parametros": {"alpha": 0.011462, "l1_ratio": 0.175544}, "rmse_cv": 0.12965406647436745, "desv": 0.01354684507190924, "rmse_train": 0.12623649493112446, "posicion": 3}, {"parametros": {"alpha": 0.000289, "l1_ratio": 0.379726}, "rmse_cv": 0.1297791927915174, "desv": 0.012988774628757492, "rmse_train": 0.12582406300464483, "posicion": 8}, {"parametros": {"alpha": 0.001907, "l1_ratio": 0.756658}, "rmse_cv": 0.12968448736850863, "desv": 0.013327921507895352, "rmse_train": 0.12604950234856627, "posicion": 6}, {"parametros": {"alpha": 0.0001, "l1_ratio": 0.512811}, "rmse_cv": 0.12980778475828067, "desv": 0.01297357703119178, "rmse_train": 0.12582255845119233, "posicion": 10}, {"parametros": {"alpha": 0.009164, "l1_ratio": 0.091805}, "rmse_cv": 0.1295800013760239, "desv": 0.01323054985074171, "rmse_train": 0.12592434736450875, "posicion": 1}, {"parametros": {"alpha": 0.010907, "l1_ratio": 0.203472}, "rmse_cv": 0.12966748767423636, "desv": 0.013590744575431605, "rmse_train": 0.12629695827057524, "posicion": 4}, {"parametros": {"alpha": 2.1e-05, "l1_ratio": 0.903997}, "rmse_cv": 0.12982361106882484, "desv": 0.012965708269627665, "rmse_train": 0.12582220562235447, "posicion": 12}, {"parametros": {"alpha": 0.673225, "l1_ratio": 0.777558}, "rmse_cv": 0.3902226269287242, "desv": 0.027351460340351165, "rmse_train": 0.39072788216175997, "posicion": 20}, {"parametros": {"alpha": 0.000333, "l1_ratio": 0.137905}, "rmse_cv": 0.1298067358642835, "desv": 0.012973819789314434, "rmse_train": 0.12582253203420768, "posicion": 9}, {"parametros": {"alpha": 0.026373, "l1_ratio": 0.446137}, "rmse_cv": 0.13215529521397706, "desv": 0.014721122119568296, "rmse_train": 0.1301095989727007, "posicion": 17}], "folds_cv": [0.12321509395093107, 0.12448743511199269, 0.14978236679413304, 0.12528685771542986, 0.11594217205120289, 0.13779777830237488, 0.15205156856975627, 0.12080080944680839, 0.11016149653688438, 0.1362744352807258], "folds_train": [0.1265565013742003, 0.1265294643370461, 0.12369955481150362, 0.1265604129318305, 0.12740458635591376, 0.1251720856575719, 0.12307593244237372, 0.12710542052485252, 0.12805054404782212, 0.1250889711619729], "validacion_predicho": [135462, 354458, 110249, 152931, 318204, 76864, 226603, 151566, 75154, 117450, 133877, 116386, 96524, 212572, 183115, 135608, 198836, 132786, 109824, 221300, 183352, 209420, 188907, 126705, 219944, 164868, 190270, 110289, 183546, 195558, 116140, 281798, 217116, 105314, 281093, 146895, 157737, 211719, 346380, 90616, 115710, 254512, 111466, 331280, 122543, 137855, 110120, 124517, 429988, 131477, 112219, 209610, 110447, 322732, 158395, 254572, 208994, 154201, 148520, 103985, 67440, 155399, 292414, 248048, 285915, 210048, 97751, 340736, 110472, 162213, 116933, 128677, 105756, 81615, 455604, 197607, 329813, 319468, 131413, 113812, 108768, 102567, 119208, 96809, 141222, 117072, 262014, 224014, 149145, 194299, 160928, 153277, 112145, 260561, 113289, 183550, 161984, 186170, 201355, 244057, 188305, 217453, 260994, 119791, 199053, 178535, 147252, 264140, 142738, 178706, 62080, 115413, 139838, 127438, 209685, 117508, 99268, 103650, 127626, 304265, 129904, 154952, 173220, 159645, 209185, 114128, 243909, 90225, 146817, 186450, 196744, 336899, 192797, 129506, 63542, 360880, 345781, 126618, 246463, 482016, 368085, 116293, 169517, 159981, 142688, 123313, 204098, 195174, 121696, 78038, 112639, 139758, 232989, 149711, 90533, 116153, 126464, 146596, 84474, 139774, 199140, 127222, 286194, 150972, 116996, 130638, 227227, 308777, 405628, 207996, 391896, 84407, 111581, 149482, 339760, 132038, 127102, 218813, 121525, 177048, 164386, 96607, 130487, 143089, 265472, 139069, 278117, 229745, 200938, 87256, 123891, 107325, 158746, 170917, 206344, 173987, 227139, 91630, 228532, 128069, 217392, 181884, 118369, 332307, 209212, 125489, 246296, 130820, 163534, 109121, 246212, 146321, 112575, 158691, 206345, 260109, 208681, 142911, 147589, 125372, 128019, 240204, 205466, 102572, 233408, 140250, 94180, 99751, 169156, 98066, 97412, 174895, 120628, 121386, 246083, 122214, 199291, 157506, 228521, 131772, 104882, 252011, 206987, 357263, 186934, 115844, 151689, 176769, 130819, 97321, 169750, 173126, 135114, 91794, 134318, 140057, 127617, 106869, 177654, 271609, 300379, 188850, 122766, 223374, 291538, 220532, 167848, 152169, 106471, 184689, 412350, 225131, 251887, 100551, 92877, 133545, 158628, 287948, 208804, 141979, 200631, 88074, 192226, 105497, 286236, 173274, 226470, 116241, 256542, 208542, 110636, 107553], "test": {"resumen": {"media": 177838.72748401202, "mediana": 158643.89901290348, "desv": 73724.83531278075, "min": 58645.583206866155, "max": 494835.55674429913, "p05": 93765.98697485369, "p95": 330640.18343465676}, "densidad": [2.66e-10, 7.48e-10, 1.943e-09, 4.684e-09, 1.0482e-08, 2.1827e-08, 4.2406e-08, 7.7122e-08, 1.31849e-07, 2.12986e-07, 3.27049e-07, 4.80575e-07, 6.80391e-07, 9.33989e-07, 1.249483e-06, 1.634704e-06, 2.095437e-06, 2.633194e-06, 3.243026e-06, 3.9117e-06, 4.616486e-06, 5.324992e-06, 5.996823e-06, 6.587648e-06, 7.05539e-06, 7.367195e-06, 7.505392e-06, 7.471055e-06, 7.284574e-06, 6.983045e-06, 6.614462e-06, 6.229086e-06, 5.869506e-06, 5.562107e-06, 5.312976e-06, 5.109901e-06, 4.929747e-06, 4.748245e-06, 4.548454e-06, 4.32506e-06, 4.083685e-06, 3.836439e-06, 3.596173e-06, 3.371842e-06, 3.166403e-06, 2.977327e-06, 2.798811e-06, 2.624484e-06, 2.449699e-06, 2.273012e-06, 2.096717e-06, 1.926349e-06, 1.769108e-06, 1.631466e-06, 1.516752e-06, 1.423729e-06, 1.34696e-06, 1.278912e-06, 1.212873e-06, 1.145331e-06, 1.07677e-06, 1.010623e-06, 9.51047e-07, 9.0062e-07, 8.59021e-07, 8.23166e-07, 7.88605e-07, 7.5142e-07, 7.09777e-07, 6.64504e-07, 6.18576e-07, 5.75803e-07, 5.39231e-07, 5.09843e-07, 4.85987e-07, 4.63829e-07, 4.38717e-07, 4.0701e-07, 3.67611e-07, 3.22552e-07, 2.76364e-07, 2.34529e-07, 2.01663e-07, 1.80106e-07, 1.69393e-07, 1.66676e-07, 1.67874e-07, 1.69087e-07, 1.67724e-07, 1.62947e-07, 1.55344e-07, 1.46111e-07, 1.36218e-07, 1.2599e-07, 1.15193e-07, 1.03444e-07, 9.0612e-08, 7.6986e-08, 6.3185e-08, 4.994e-08, 3.7898e-08, 2.7514e-08, 1.9027e-08, 1.247e-08, 7.707e-09, 4.469e-09, 2.421e-09, 1.221e-09, 5.72e-10, 2.48e-10, 9.9e-11, 3.7e-11, 1.3e-11, 4e-12, 1e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.02672454593310747, "correlacion": 0.9860792799055306, "diferencia_media_abs": 8738.32023134283}, "descartado": false, "razones": [], "alerta_sobreajuste": false}, {"nombre": "Lasso", "tipo": "Regresión", "metricas": {"rmse_real": 30137.27251416397, "rmse_normalizado": 0.04187541078738726, "rmse_log_train": 0.12620271955149148, "rmse_log_cv": 0.12964767790194207, "rmse_log_val": 0.1425848508445508, "brecha_val": 0.012937172942608738, "rmse_log_train_cv": 0.12588739029355991, "desv_folds": 0.01315101169751867, "brecha_cv": 0.0037602876083821513}, "mejores_parametros": {"alpha": 0.000746}, "configuraciones": [{"parametros": {"alpha": 0.000746}, "rmse_cv": 0.12964767790194207, "desv": 0.01315101169751867, "rmse_train": 0.12588739029355991, "posicion": 1}, {"parametros": {"alpha": 0.566985}, "rmse_cv": 0.3902226269287242, "desv": 0.027351460340351165, "rmse_train": 0.39072788216175997, "posicion": 19}, {"parametros": {"alpha": 0.045706}, "rmse_cv": 0.15471010245933298, "desv": 0.01693682873551304, "rmse_train": 0.15370013694321846, "posicion": 16}, {"parametros": {"alpha": 0.009847}, "rmse_cv": 0.13150987600133493, "desv": 0.014523934568910156, "rmse_train": 0.1292114032427866, "posicion": 13}, {"parametros": {"alpha": 6e-05}, "rmse_cv": 0.12980415980263177, "desv": 0.012975572280604511, "rmse_train": 0.12582270847637084, "posicion": 8}, {"parametros": {"alpha": 6e-05}, "rmse_cv": 0.12980416763711905, "desv": 0.012975568125825124, "rmse_train": 0.12582270816443297, "posicion": 9}, {"parametros": {"alpha": 2e-05}, "rmse_cv": 0.12982344813970545, "desv": 0.012965794640568263, "rmse_train": 0.12582220790470536, "posicion": 10}, {"parametros": {"alpha": 0.21423}, "rmse_cv": 0.3069595099506935, "desv": 0.023441084635124457, "rmse_train": 0.3070303770599651, "posicion": 18}, {"parametros": {"alpha": 0.010129}, "rmse_cv": 0.1316116523950451, "desv": 0.014554035894864936, "rmse_train": 0.1293451337132618, "posicion": 14}, {"parametros": {"alpha": 0.034703}, "rmse_cv": 0.14599177203654334, "desv": 0.016062178104291284, "rmse_train": 0.14477566091113955, "posicion": 15}, {"parametros": {"alpha": 1.3e-05}, "rmse_cv": 0.12982679150612114, "desv": 0.012964081432302217, "rmse_train": 0.12582217372694618, "posicion": 11}, {"parametros": {"alpha": 0.707211}, "rmse_cv": 0.3902226269287242, "desv": 0.027351460340351165, "rmse_train": 0.39072788216175997, "posicion": 19}, {"parametros": {"alpha": 0.145282}, "rmse_cv": 0.24149974184017617, "desv": 0.020423683537550724, "rmse_train": 0.24142885467605146, "posicion": 17}, {"parametros": {"alpha": 0.000115}, "rmse_cv": 0.12977936495785164, "desv": 0.012989212532545256, "rmse_train": 0.12582419157139935, "posicion": 5}, {"parametros": {"alpha": 8.1e-05}, "rmse_cv": 0.12979450847798035, "desv": 0.012980690130566266, "rmse_train": 0.12582316412108002, "posicion": 7}, {"parametros": {"alpha": 8.3e-05}, "rmse_cv": 0.12979381749642177, "desv": 0.012981062089831474, "rmse_train": 0.12582320185229126, "posicion": 6}, {"parametros": {"alpha": 0.000332}, "rmse_cv": 0.12970834460210032, "desv": 0.01303959325093782, "rmse_train": 0.12583670056284652, "posicion": 3}, {"parametros": {"alpha": 0.004205}, "rmse_cv": 0.1300920938572651, "desv": 0.01385311240754878, "rmse_train": 0.1269527946363734, "posicion": 12}, {"parametros": {"alpha": 0.001445}, "rmse_cv": 0.12968905915097878, "desv": 0.013325132984116446, "rmse_train": 0.1260496489386693, "posicion": 2}, {"parametros": {"alpha": 0.000286}, "rmse_cv": 0.12971938221594514, "desv": 0.013028061367857554, "rmse_train": 0.12583330917106622, "posicion": 4}], "folds_cv": [0.12313686389344314, 0.12479122722861599, 0.14967498620210232, 0.1257717286972859, 0.11592964661838788, 0.1377385249877423, 0.1520035503018436, 0.12076775557001992, 0.1103828811684092, 0.13627961435157054], "folds_train": [0.12651539234726544, 0.1264931891779844, 0.1236614744633063, 0.12651692579126989, 0.12737425499624497, 0.12513439213760355, 0.12304113312442001, 0.12707484054208756, 0.128014270085554, 0.12504803026986291], "validacion_predicho": [135686, 355595, 109932, 153103, 318406, 76759, 227324, 151371, 75017, 117262, 134012, 116337, 95975, 212525, 183184, 135679, 198703, 132907, 109615, 221267, 183223, 210117, 188807, 126893, 220279, 164672, 190228, 110152, 183440, 195275, 115938, 281926, 217335, 105283, 281010, 147085, 158341, 211645, 347690, 90735, 115356, 255084, 111463, 330567, 122565, 138008, 110126, 124521, 430252, 131491, 112108, 210283, 110251, 324218, 157861, 255279, 208696, 153797, 148703, 104272, 67144, 155437, 292738, 248149, 285764, 210396, 97738, 341023, 110745, 162289, 116919, 128710, 105648, 81289, 455493, 197736, 330962, 320021, 131442, 113889, 108807, 102559, 119164, 96810, 141247, 117279, 262504, 224297, 148681, 193968, 161797, 153245, 112094, 261322, 113216, 182981, 161916, 186221, 201826, 243582, 188517, 217500, 261567, 119727, 199091, 178569, 147512, 265091, 142881, 178639, 61806, 115418, 139909, 127470, 210016, 117164, 99225, 103231, 128093, 304684, 129917, 154514, 173108, 159770, 209204, 113999, 244484, 89962, 146530, 186467, 197084, 337664, 193385, 130032, 63171, 361088, 345976, 126705, 246964, 482011, 369053, 116378, 168887, 160086, 142852, 123194, 204798, 195367, 121657, 77672, 112523, 139845, 232457, 149700, 90027, 115987, 126072, 146760, 84185, 139722, 199022, 127709, 286373, 151037, 117254, 130527, 227545, 308706, 405207, 209021, 392963, 84316, 111515, 149495, 340525, 131941, 127112, 218674, 121558, 177087, 164037, 96646, 130586, 143495, 265738, 138905, 278482, 229391, 200549, 86953, 123896, 107193, 158614, 171471, 206067, 173999, 227506, 91647, 228826, 127831, 218033, 182075, 118719, 333297, 209377, 125211, 246676, 130969, 164265, 109001, 246244, 145868, 112446, 158748, 207401, 260830, 207917, 142889, 147545, 125508, 127864, 240118, 205073, 102484, 233715, 140568, 93810, 99452, 169589, 97631, 97479, 174700, 120528, 121341, 246447, 122284, 199190, 157596, 228594, 131502, 104500, 251503, 207382, 357296, 186640, 116017, 151435, 176442, 130493, 97158, 169420, 172554, 135549, 91532, 133966, 139953, 128283, 106675, 177584, 271913, 300567, 188677, 122819, 223423, 290555, 219885, 167622, 151904, 106204, 184653, 412076, 225405, 252185, 100624, 92761, 133743, 158740, 288088, 209433, 141900, 200411, 87888, 192582, 105275, 286209, 173054, 227155, 115975, 256081, 208250, 110529, 107264], "test": {"resumen": {"media": 177887.29850435123, "mediana": 158689.62686164703, "desv": 73884.51267835188, "min": 58186.17469913565, "max": 496451.88940035837, "p05": 93532.21557691947, "p95": 331482.99314447114}, "densidad": [2.92e-10, 8.11e-10, 2.09e-09, 4.996e-09, 1.1092e-08, 2.2929e-08, 4.4241e-08, 7.9949e-08, 1.35889e-07, 2.18369e-07, 3.33777e-07, 4.88513e-07, 6.89292e-07, 9.43515e-07, 1.259201e-06, 1.644066e-06, 2.103773e-06, 2.639744e-06, 3.247027e-06, 3.912502e-06, 4.613646e-06, 5.318346e-06, 5.986532e-06, 6.574247e-06, 7.039833e-06, 7.350862e-06, 7.489988e-06, 7.458372e-06, 7.276121e-06, 6.979652e-06, 6.61598e-06, 6.234316e-06, 5.876408e-06, 5.568271e-06, 5.316223e-06, 5.108846e-06, 4.924118e-06, 4.738861e-06, 4.536875e-06, 4.313063e-06, 4.072767e-06, 3.827521e-06, 3.589544e-06, 3.367281e-06, 3.163396e-06, 2.975281e-06, 2.797243e-06, 2.623153e-06, 2.44867e-06, 2.27262e-06, 2.097417e-06, 1.928491e-06, 1.772721e-06, 1.636158e-06, 1.521776e-06, 1.4282e-06, 1.350125e-06, 1.280355e-06, 1.21257e-06, 1.143547e-06, 1.073875e-06, 1.00697e-06, 9.46985e-07, 8.96628e-07, 8.55823e-07, 8.21675e-07, 7.89625e-07, 7.55249e-07, 7.1591e-07, 6.71653e-07, 6.25033e-07, 5.80003e-07, 5.40287e-07, 5.07828e-07, 4.81891e-07, 4.59223e-07, 4.35246e-07, 4.05897e-07, 3.69317e-07, 3.26704e-07, 2.81955e-07, 2.40302e-07, 2.06523e-07, 1.83437e-07, 1.71159e-07, 1.67326e-07, 1.68098e-07, 1.69527e-07, 1.68753e-07, 1.64585e-07, 1.57321e-07, 1.48032e-07, 1.3775e-07, 1.26987e-07, 1.15737e-07, 1.03792e-07, 9.1092e-08, 7.7874e-08, 6.4618e-08, 5.1882e-08, 4.0167e-08, 2.9851e-08, 2.1181e-08, 1.4265e-08, 9.066e-09, 5.408e-09, 3.014e-09, 1.564e-09, 7.53e-10, 3.36e-10, 1.39e-10, 5.3e-11, 1.9e-11, 6e-12, 2e-12, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "nulos": 0, "no_positivos": 0, "desvio_mediana": -0.026444006983760482, "correlacion": 0.9860036278434552, "diferencia_media_abs": 8763.158398535199}, "descartado": false, "razones": [], "alerta_sobreajuste": false}]}</script>
+<script>
+(function () {
+  const D = JSON.parse(document.getElementById("datos").textContent);
+  const M = D.modelos;
+  const P = D.parametros;
+  const usd = (v) => "$" + Math.round(v).toLocaleString("en-US");
+  const miles = (v) => "$" + Math.round(v / 1000) + "K";
+  const f4 = (v) => v.toFixed(4);
+  const pct = (v) => (v >= 0 ? "+" : "") + (v * 100).toFixed(1) + " %";
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => "var(--" + n + ")";
+
+  let activo = D.ganador;
+  let metricaActiva = "rmse_real";
+  let orden = { clave: "rmse_real", asc: true };
+  const modelo = () => M.find((m) => m.nombre === activo);
+
+  /* Estado */
+  const pastillas = (m) => {
+    const p = [];
+    if (m.descartado) p.push('<span class="pastilla critico">✕ Descartado</span>');
+    else p.push('<span class="pastilla bueno">✓ Vigente</span>');
+    if (m.nombre === D.ganador) p.push('<span class="pastilla bueno">★ Ganador</span>');
+    if (m.alerta_sobreajuste) p.push('<span class="pastilla aviso">⚠ Sobreajuste</span>');
+    return '<span class="grupo-pastillas">' + p.join("") + "</span>";
+  };
+
+  /* Texto de resumen */
+  const descartados = M.filter((m) => m.descartado);
+  const alertas = M.filter((m) => m.alerta_sobreajuste);
+  const g = M.find((m) => m.nombre === D.ganador);
+  $("resumen").textContent =
+    g.nombre + " lidera con un RMSE real de " + usd(g.metricas.rmse_real) + " en validación (" + P.registros_validacion + " viviendas). " +
+    (descartados.length ? "Modelos descartados por salida incoherente: " + descartados.map((m) => m.nombre).join(", ") + ". " : "Ningún modelo se descarta por salida incoherente en test. ") +
+    (alertas.length ? "Con alerta de sobreajuste: " + alertas.map((m) => m.nombre).join(", ") + "." : "Ningún modelo tiene alerta de sobreajuste.");
+
+  /* Tabla resumen */
+  const columnas = [
+    { clave: "rmse_real", t: "RMSE real", v: (m) => m.metricas.rmse_real, f: usd },
+    { clave: "rmse_normalizado", t: "RMSE normalizado", v: (m) => m.metricas.rmse_normalizado, f: f4 },
+    { clave: "rmse_log_cv", t: "RMSE log CV", v: (m) => m.metricas.rmse_log_cv, f: f4 },
+    { clave: "rmse_log_val", t: "RMSE log validación", v: (m) => m.metricas.rmse_log_val, f: f4 },
+    { clave: "brecha_cv", t: "Brecha train-CV", v: (m) => m.metricas.brecha_cv, f: f4 },
+    { clave: "brecha_val", t: "Brecha CV-validación", v: (m) => m.metricas.brecha_val, f: f4 },
+  ];
+  function pintarResumen() {
+    const filas = [...M];
+    const col = columnas.find((c) => c.clave === orden.clave);
+    if (col) filas.sort((a, b) => (col.v(a) - col.v(b)) * (orden.asc ? 1 : -1));
+    const flecha = (c) => (c === orden.clave ? (orden.asc ? " ▲" : " ▼") : "");
+    $("tabla-resumen").innerHTML =
+      '<thead><tr><th>Modelo</th><th class="izq">Tipo</th><th class="izq">Estado</th>' +
+      columnas.map((c) => '<th aria-sort="' + (c.clave === orden.clave ? (orden.asc ? "ascending" : "descending") : "none") + '"><button type="button" data-orden="' + c.clave + '">' + c.t + flecha(c.clave) + "</button></th>").join("") +
+      "</tr></thead><tbody>" +
+      filas.map((m) =>
+        '<tr class="seleccionable' + (m.nombre === activo ? " activo" : "") + '" tabindex="0" data-modelo="' + esc(m.nombre) + '"><td><b>' + esc(m.nombre) + '</b></td><td class="izq">' + esc(m.tipo) + '</td><td class="izq">' + pastillas(m) + "</td>" +
+        columnas.map((c) => "<td>" + c.f(c.v(m)) + "</td>").join("") + "</tr>"
+      ).join("") + "</tbody>";
+    $("tabla-resumen").querySelectorAll("[data-orden]").forEach((b) => b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const c = b.dataset.orden;
+      orden = { clave: c, asc: orden.clave === c ? !orden.asc : true };
+      pintarResumen();
+    }));
+    $("tabla-resumen").querySelectorAll("tr[data-modelo]").forEach((tr) => {
+      tr.addEventListener("click", () => seleccionar(tr.dataset.modelo));
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); seleccionar(tr.dataset.modelo); } });
+    });
+  }
+
+  /* Barras */
+  const metricas = {
+    rmse_real: { t: "RMSE real", f: usd, n: "Error típico en dólares en validación. Menor es mejor." },
+    rmse_normalizado: { t: "RMSE normalizado", f: f4, n: "RMSE real dividido entre el rango de precios en validación (" + usd(P.rango_validacion) + "). Menor es mejor." },
+    rmse_log_cv: { t: "RMSE log CV", f: f4, n: "Error en escala logarítmica en las filas retenidas de la validación cruzada. Menor es mejor." },
+    rmse_log_val: { t: "RMSE log validación", f: f4, n: "Error en escala logarítmica en validación. Da menos peso a las casas caras que el RMSE real. Menor es mejor." },
+    brecha_cv: { t: "Brecha train-CV", f: f4, n: "Diferencia entre el error en CV y el de entrenamiento. Por encima de " + P.brecha_alerta + " genera alerta de sobreajuste." },
+  };
+  $("control-metrica").innerHTML = Object.entries(metricas).map(([k, v]) => '<button type="button" class="chip" data-m="' + k + '">' + v.t + "</button>").join("");
+  $("control-metrica").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { metricaActiva = b.dataset.m; pintarBarras(); }));
+  function pintarBarras() {
+    $("control-metrica").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.m === metricaActiva));
+    const me = metricas[metricaActiva];
+    $("nota-metrica").textContent = me.n;
+    const filas = [...M].sort((a, b) => a.metricas[metricaActiva] - b.metricas[metricaActiva]);
+    const max = Math.max(...filas.map((m) => m.metricas[metricaActiva]));
+    $("barras").innerHTML = filas.map((m) =>
+      '<button type="button" class="barra' + (m.nombre === activo ? " activa" : "") + '" data-modelo="' + esc(m.nombre) + '"><span class="barra-nombre">' + esc(m.nombre) + '</span><span class="barra-pista"><span class="barra-carril"><span class="barra-relleno" style="width:' + (m.metricas[metricaActiva] / max * 100).toFixed(1) + '%"></span></span><span class="barra-valor">' + me.f(m.metricas[metricaActiva]) + "</span></span></button>"
+    ).join("");
+    $("barras").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => seleccionar(b.dataset.modelo)));
+  }
+
+  /* Selector de modelo */
+  $("control-modelo").innerHTML = M.map((m) => '<button type="button" class="chip" data-modelo="' + esc(m.nombre) + '">' + esc(m.nombre) + "</button>").join("");
+  $("control-modelo").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => seleccionar(b.dataset.modelo)));
+
+  /* Ayudas de gráficas */
+  const ayuda = $("ayuda");
+  function mostrarAyuda(html, x, y) {
+    ayuda.innerHTML = html;
+    ayuda.style.display = "block";
+    const r = ayuda.getBoundingClientRect();
+    let left = x + 14, top = y + 14;
+    if (left + r.width > innerWidth - 8) left = x - r.width - 14;
+    if (top + r.height > innerHeight - 8) top = y - r.height - 14;
+    ayuda.style.left = Math.max(8, left) + "px";
+    ayuda.style.top = Math.max(8, top) + "px";
+  }
+  const ocultarAyuda = () => { ayuda.style.display = "none"; };
+
+  function escala(d0, d1, r0, r1) { return (v) => r0 + (v - d0) / (d1 - d0) * (r1 - r0); }
+  function pasoLindo(min, max, n) {
+    const bruto = (max - min) / n, mag = Math.pow(10, Math.floor(Math.log10(bruto))), res = bruto / mag;
+    return (res < 1.5 ? 1 : res < 3 ? 2 : res < 7 ? 5 : 10) * mag;
+  }
+  function marcas(min, max, n) {
+    const p = pasoLindo(min, max, n), s = [];
+    for (let v = Math.ceil(min / p - 1e-9) * p; v <= max + p * 1e-6; v += p) s.push(+v.toFixed(8));
+    return s;
+  }
+  function conectar(cont, svg, fn) {
+    const mover = (e) => {
+      const r = svg.getBoundingClientRect();
+      const vb = svg.viewBox.baseVal;
+      fn((e.clientX - r.left) * vb.width / r.width, (e.clientY - r.top) * vb.height / r.height, e);
+    };
+    svg.addEventListener("pointermove", mover);
+    svg.addEventListener("pointerdown", mover);
+    svg.addEventListener("pointerleave", () => { fn(null); ocultarAyuda(); });
+  }
+
+  /* Configuraciones */
+  function pintarConfigs() {
+    const m = modelo();
+    const cont = $("g-configs"), W = Math.max(cont.clientWidth, 300), H = 280;
+    const pad = { l: 48, r: 12, t: 12, b: 34 };
+    const cfg = [...m.configuraciones].sort((a, b) => a.posicion - b.posicion);
+    const vals = cfg.flatMap((c) => [c.rmse_cv, c.rmse_train]);
+    const mn = Math.min(...vals), mx = Math.max(...vals), hol = (mx - mn) * 0.08 || 0.01;
+    const y0 = Math.max(0, mn - hol), y1 = mx + hol;
+    const x = (i) => pad.l + (i + 0.5) * (W - pad.l - pad.r) / cfg.length;
+    const y = escala(y0, y1, H - pad.b, pad.t);
+    let s = "";
+    marcas(y0, y1, 5).forEach((v) => {
+      s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + css("reticula") + '"/><text class="t-eje" x="' + (pad.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v.toFixed(v < 1 && y1 - y0 < 0.1 ? 3 : 2) + "</text>";
+    });
+    cfg.forEach((c, i) => {
+      s += '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + y(c.rmse_train) + '" y2="' + y(c.rmse_cv) + '" stroke="' + css("eje") + '" stroke-width="1.5"/>';
+    });
+    cfg.forEach((c, i) => {
+      s += '<circle cx="' + x(i) + '" cy="' + y(c.rmse_train) + '" r="4" fill="' + css("serie-2") + '" stroke="' + css("superficie") + '" stroke-width="2"/>';
+      s += '<circle cx="' + x(i) + '" cy="' + y(c.rmse_cv) + '" r="' + (i === 0 ? 5.5 : 4) + '" fill="' + css("serie-1") + '" stroke="' + css("superficie") + '" stroke-width="2"/>';
+    });
+    [0, 4, 9, 14, 19].forEach((i) => { s += '<text class="t-eje" x="' + x(i) + '" y="' + (H - pad.b + 16) + '" text-anchor="middle">' + (i + 1) + "</text>"; });
+    s += '<text class="t-rot" x="' + ((pad.l + W - pad.r) / 2) + '" y="' + (H - 3) + '" text-anchor="middle">Posición de la configuración (1 = elegida)</text>';
+    s += '<g class="cursor"></g>';
+    cont.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="RMSE de las 20 configuraciones de ' + esc(m.nombre) + '">' + s + "</svg>";
+    const svg = cont.querySelector("svg"), cur = svg.querySelector(".cursor");
+    conectar(cont, svg, (px, py, e) => {
+      if (px === null) { cur.innerHTML = ""; return; }
+      const i = Math.max(0, Math.min(cfg.length - 1, Math.floor((px - pad.l) / ((W - pad.l - pad.r) / cfg.length))));
+      const c = cfg[i];
+      cur.innerHTML = '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + pad.t + '" y2="' + (H - pad.b) + '" stroke="' + css("tinta-3") + '"/>';
+      mostrarAyuda("<b>Configuración " + c.posicion + "</b>RMSE CV: " + f4(c.rmse_cv) + " ± " + f4(c.desv) + "<br>RMSE entrenamiento: " + f4(c.rmse_train) + "<br>" + Object.entries(c.parametros).map(([k, v]) => esc(k) + ": " + esc(valorCorto(v))).join("<br>"), e.clientX, e.clientY);
+    });
+  }
+  const valorCorto = (v) => typeof v === "number" ? (Number.isInteger(v) ? v : (Math.abs(v) < 0.01 ? v.toExponential(2) : v.toFixed(3))) : v;
+
+  /* Folds */
+  const todosFolds = M.flatMap((m) => [...m.folds_cv, ...m.folds_train]);
+  const foldMin = Math.max(0, Math.min(...todosFolds) - 0.01), foldMax = Math.max(...todosFolds) + 0.01;
+  function pintarFolds() {
+    const m = modelo();
+    const cont = $("g-folds"), W = Math.max(cont.clientWidth, 300), H = 280;
+    const pad = { l: 48, r: 12, t: 12, b: 34 };
+    const n = m.folds_cv.length;
+    const x = escala(0, n - 1, pad.l + 14, W - pad.r - 14);
+    const y = escala(foldMin, foldMax, H - pad.b, pad.t);
+    const linea = (a) => a.map((v, i) => (i ? "L" : "M") + x(i) + " " + y(v)).join(" ");
+    let s = "";
+    marcas(foldMin, foldMax, 5).forEach((v) => {
+      s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + css("reticula") + '"/><text class="t-eje" x="' + (pad.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + v.toFixed(2) + "</text>";
+    });
+    [[m.folds_train, "serie-2"], [m.folds_cv, "serie-1"]].forEach(([a, c]) => {
+      s += '<path d="' + linea(a) + '" fill="none" stroke="' + css(c) + '" stroke-width="2" stroke-linejoin="round"/>';
+      a.forEach((v, i) => { s += '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="4" fill="' + css(c) + '" stroke="' + css("superficie") + '" stroke-width="2"/>'; });
+    });
+    for (let i = 0; i < n; i++) s += '<text class="t-eje" x="' + x(i) + '" y="' + (H - pad.b + 16) + '" text-anchor="middle">' + (i + 1) + "</text>";
+    s += '<text class="t-rot" x="' + ((pad.l + W - pad.r) / 2) + '" y="' + (H - 3) + '" text-anchor="middle">Fold</text><g class="cursor"></g>';
+    cont.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="RMSE por fold de ' + esc(m.nombre) + '">' + s + "</svg>";
+    const svg = cont.querySelector("svg"), cur = svg.querySelector(".cursor");
+    conectar(cont, svg, (px, py, e) => {
+      if (px === null) { cur.innerHTML = ""; return; }
+      const i = Math.max(0, Math.min(n - 1, Math.round((px - x(0)) / ((x(n - 1) - x(0)) / (n - 1)))));
+      cur.innerHTML = '<line x1="' + x(i) + '" x2="' + x(i) + '" y1="' + pad.t + '" y2="' + (H - pad.b) + '" stroke="' + css("tinta-3") + '"/>';
+      mostrarAyuda("<b>Fold " + (i + 1) + "</b>Retenido (CV): " + f4(m.folds_cv[i]) + "<br>Entrenamiento: " + f4(m.folds_train[i]), e.clientX, e.clientY);
+    });
+  }
+
+  /* Dispersión real vs. predicho */
+  function pintarDispersion() {
+    const m = modelo();
+    const cont = $("g-dispersion"), W = Math.max(cont.clientWidth, 280), H = W;
+    const pad = { l: 54, r: 14, t: 12, b: 42 };
+    const real = D.validacion_real, pred = m.validacion_predicho;
+    const lim = Math.max(...real, ...M.flatMap((k) => k.validacion_predicho)) * 1.05;
+    const x = escala(0, lim, pad.l, W - pad.r), y = escala(0, lim, H - pad.b, pad.t);
+    let s = "";
+    marcas(0, lim, 5).forEach((v) => {
+      s += '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="' + css("reticula") + '"/><text class="t-eje" x="' + (pad.l - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + miles(v) + "</text>";
+      s += '<text class="t-eje" x="' + x(v) + '" y="' + (H - pad.b + 16) + '" text-anchor="middle">' + miles(v) + "</text>";
+    });
+    s += '<line x1="' + x(0) + '" y1="' + y(0) + '" x2="' + x(lim) + '" y2="' + y(lim) + '" stroke="' + css("serie-gris") + '" stroke-width="1.5"/>';
+    real.forEach((r, i) => { s += '<circle cx="' + x(r).toFixed(1) + '" cy="' + y(pred[i]).toFixed(1) + '" r="3.2" fill="' + css("serie-1") + '" fill-opacity="0.6"/>'; });
+    s += '<text class="t-rot" x="' + ((pad.l + W - pad.r) / 2) + '" y="' + (H - 6) + '" text-anchor="middle">Precio real</text>';
+    s += '<text class="t-rot" transform="translate(12 ' + ((pad.t + H - pad.b) / 2) + ') rotate(-90)" text-anchor="middle">Precio predicho</text><g class="cursor"></g>';
+    cont.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Precio real contra predicho de ' + esc(m.nombre) + '">' + s + "</svg>";
+    const svg = cont.querySelector("svg"), cur = svg.querySelector(".cursor");
+    conectar(cont, svg, (px, py, e) => {
+      if (px === null) { cur.innerHTML = ""; return; }
+      let mejor = -1, d = 900;
+      real.forEach((r, i) => { const dd = (x(r) - px) ** 2 + (y(pred[i]) - py) ** 2; if (dd < d) { d = dd; mejor = i; } });
+      if (mejor < 0) { cur.innerHTML = ""; ocultarAyuda(); return; }
+      cur.innerHTML = '<circle cx="' + x(real[mejor]) + '" cy="' + y(pred[mejor]) + '" r="6" fill="' + css("serie-1") + '" stroke="' + css("superficie") + '" stroke-width="2"/>';
+      mostrarAyuda("<b>Vivienda de validación</b>Real: " + usd(real[mejor]) + "<br>Predicho: " + usd(pred[mejor]) + "<br>Diferencia: " + (pred[mejor] >= real[mejor] ? "+" : "−") + usd(Math.abs(pred[mejor] - real[mejor])), e.clientX, e.clientY);
+    });
+  }
+
+  /* Densidades en test */
+  const refGanador = g.test.densidad;
+  const maxDens = Math.max(...M.flatMap((m) => m.test.densidad), ...D.train.densidad);
+  function pintarDensidades() {
+    const raiz = $("densidades");
+    if (!raiz.children.length) {
+      raiz.innerHTML = M.map((m, i) =>
+        '<div class="grafica"><h3>' + esc(m.nombre) + " " + pastillasMini(m) + '</h3><div class="lienzo" id="dens-' + i + '"></div></div>'
+      ).join("");
+    }
+    M.forEach((m, i) => {
+      const cont = $("dens-" + i), W = Math.max(cont.clientWidth, 260), H = 190;
+      const pad = { l: 8, r: 10, t: 8, b: 26 };
+      const malla = D.malla;
+      const x = escala(0, malla[malla.length - 1], pad.l, W - pad.r), y = escala(0, maxDens * 1.05, H - pad.b, pad.t);
+      const linea = (a) => a.map((v, k) => (k ? "L" : "M") + x(malla[k]).toFixed(1) + " " + y(v).toFixed(1)).join(" ");
+      const area = (a) => linea(a) + " L" + x(malla[malla.length - 1]) + " " + y(0) + " L" + x(0) + " " + y(0) + " Z";
+      let s = '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="' + css("eje") + '"/>';
+      [0, 200000, 400000, 600000, 800000].forEach((v) => { s += '<text class="t-eje" x="' + x(v) + '" y="' + (H - pad.b + 16) + '" text-anchor="' + (v === 0 ? "start" : v === 800000 ? "end" : "middle") + '">' + miles(v) + "</text>"; });
+      s += '<path d="' + area(m.test.densidad) + '" fill="' + css("serie-1") + '" fill-opacity="0.12"/>';
+      s += '<path d="' + linea(D.train.densidad) + '" fill="none" stroke="' + css("serie-gris") + '" stroke-width="1.5"/>';
+      if (m.nombre !== D.ganador) s += '<path d="' + linea(refGanador) + '" fill="none" stroke="' + css("serie-2") + '" stroke-width="2"/>';
+      s += '<path d="' + linea(m.test.densidad) + '" fill="none" stroke="' + css(m.nombre === D.ganador ? "serie-2" : "serie-1") + '" stroke-width="2"/><g class="cursor"></g>';
+      cont.innerHTML = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Densidad de predicciones de ' + esc(m.nombre) + '">' + s + "</svg>";
+      const svg = cont.querySelector("svg"), cur = svg.querySelector(".cursor");
+      const porcion = (d) => (d * 10000 * 100).toFixed(1) + " %";
+      conectar(cont, svg, (px, py, e) => {
+        if (px === null) { cur.innerHTML = ""; return; }
+        const paso = malla[1] - malla[0];
+        const valor = (px - pad.l) / (W - pad.l - pad.r) * malla[malla.length - 1];
+        const k = Math.max(0, Math.min(malla.length - 1, Math.round(valor / paso)));
+        cur.innerHTML = '<line x1="' + x(malla[k]) + '" x2="' + x(malla[k]) + '" y1="' + pad.t + '" y2="' + y(0) + '" stroke="' + css("tinta-3") + '"/>';
+        mostrarAyuda("<b>Cerca de " + miles(malla[k]) + "</b>Viviendas por cada $10K:<br>" +
+          (m.nombre !== D.ganador ? esc(m.nombre) + ": " + porcion(m.test.densidad[k]) + "<br>" : "") +
+          "Ganador: " + porcion(refGanador[k]) + "<br>Real en train: " + porcion(D.train.densidad[k]), e.clientX, e.clientY);
+      });
+    });
+  }
+  const pastillasMini = (m) => m.descartado ? '<span class="pastilla critico">✕ Descartado</span>' : (m.alerta_sobreajuste ? '<span class="pastilla aviso">⚠ Sobreajuste</span>' : "");
+
+  $("nota-test").textContent = "test.csv no trae precios, así que aquí no se mide error: solo la forma de las predicciones en " + P.registros_test.toLocaleString("en-US") + " viviendas. Una curva parecida no prueba que cada predicción sea correcta. Misma escala en todas las gráficas.";
+
+  /* Reglas */
+  function pintarReglas() {
+    const marca = (ok, texto) => '<span class="pastilla ' + (ok ? "bueno" : "critico") + '">' + (ok ? "✓" : "✕") + " " + texto + "</span>";
+    $("nota-reglas").textContent = "Un modelo se descarta si incumple alguna regla: nulos, precios menores o iguales a 0, mediana fuera de ±" + (P.tolerancia_mediana * 100) + " % de la mediana real de train (" + usd(D.train.resumen.mediana) + ") o correlación menor a " + P.correlacion_minima.toFixed(2) + " con el ganador. La brecha mayor a " + P.brecha_alerta + " solo genera una alerta. El ganador se compara consigo mismo en correlación, así que para él esa regla no aporta información.";
+    $("tabla-reglas").innerHTML =
+      '<thead><tr><th>Modelo</th><th class="izq">Decisión</th><th>Nulos</th><th>Precios ≤ 0</th><th>Mediana en test</th><th>Desvío de mediana</th><th>Correlación con ganador</th><th>Diferencia media con ganador</th><th>Mínimo</th><th>Máximo</th><th class="izq">Sobreajuste</th></tr></thead><tbody>' +
+      M.map((m) => {
+        const t = m.test;
+        return "<tr><td><b>" + esc(m.nombre) + '</b></td><td class="izq">' + (m.descartado ? '<span class="pastilla critico">✕ Descartado: ' + esc(m.razones.join("; ")) + "</span>" : '<span class="pastilla bueno">✓ Vigente</span>') + "</td>" +
+          "<td>" + marca(t.nulos === 0, t.nulos) + "</td><td>" + marca(t.no_positivos === 0, t.no_positivos) + "</td><td>" + usd(t.resumen.mediana) + "</td><td>" + marca(Math.abs(t.desvio_mediana) <= P.tolerancia_mediana, pct(t.desvio_mediana)) + "</td><td>" +
+          (m.nombre === D.ganador ? "Referencia" : marca(t.correlacion >= P.correlacion_minima, t.correlacion.toFixed(3))) + "</td><td>" + (m.nombre === D.ganador ? "—" : usd(t.diferencia_media_abs)) + "</td><td>" + usd(t.resumen.min) + "</td><td>" + usd(t.resumen.max) + '</td><td class="izq">' +
+          (m.alerta_sobreajuste ? '<span class="pastilla aviso">⚠ ' + f4(m.metricas.brecha_cv) + "</span>" : f4(m.metricas.brecha_cv)) + "</td></tr>";
+      }).join("") + "</tbody>";
+  }
+
+  /* Detalle */
+  function pintarDetalle() {
+    const m = modelo();
+    $("control-modelo").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.modelo === activo));
+    $("titulo-parametros").textContent = "Hiperparámetros elegidos para " + m.nombre;
+    $("parametros").innerHTML = Object.entries(m.mejores_parametros).map(([k, v]) => "<span><code>" + esc(k) + "</code> <b>" + esc(valorCorto(v)) + "</b></span>").join("");
+    $("titulo-configs").textContent = "Las " + P.n_configuraciones + " configuraciones de " + m.nombre;
+    $("titulo-dispersion").textContent = m.nombre + ": real vs. predicho en validación (RMSE real " + usd(m.metricas.rmse_real) + ")";
+    const cfg = [...m.configuraciones].sort((a, b) => a.posicion - b.posicion);
+    $("tabla-configs").innerHTML = '<thead><tr><th>Posición</th><th>RMSE CV</th><th>Desv. folds</th><th>RMSE entrenamiento</th><th class="izq">Hiperparámetros</th></tr></thead><tbody>' +
+      cfg.map((c) => "<tr><td>" + c.posicion + "</td><td>" + f4(c.rmse_cv) + "</td><td>" + f4(c.desv) + "</td><td>" + f4(c.rmse_train) + '</td><td class="ajustes">' + Object.entries(c.parametros).map(([k, v]) => esc(k) + ": " + esc(valorCorto(v))).join(", ") + "</td></tr>").join("") + "</tbody>";
+    pintarConfigs();
+    pintarFolds();
+    pintarDispersion();
+  }
+
+  function seleccionar(nombre) {
+    activo = nombre;
+    pintarResumen();
+    pintarBarras();
+    pintarDetalle();
+  }
+
+  function pintarTodo() {
+    pintarResumen();
+    pintarBarras();
+    pintarDetalle();
+    pintarDensidades();
+    pintarReglas();
+  }
+  pintarTodo();
+
+  let espera;
+  window.addEventListener("resize", () => { clearTimeout(espera); espera = setTimeout(() => { pintarDetalle(); pintarDensidades(); }, 120); });
+})();
+</script>
+</body>
+</html>
